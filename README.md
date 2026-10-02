@@ -14,7 +14,7 @@ Projet B2, La Plateforme. Binôme : Samba Diop Gomis, Andoniaina Njarasoa.
 | 4 | Quatre analyses exposées et documentées dans Swagger | À faire |
 | 5 | Optimisation : explain avant, index, explain après | À faire |
 
-La note de décision a été commitée (`0ba5dcb`) avant tout code applicatif.
+La note de décision a été commitée (`0ba5dcb`) avant tout code applicatif. Le squelette du service Spring Boot est en place ; il ne contient pas encore de logique métier.
 
 ## Choix déjà arrêtés
 
@@ -26,26 +26,69 @@ La note de décision a été commitée (`0ba5dcb`) avant tout code applicatif.
 
 Le détail et les justifications se trouvent dans le [schéma documentaire](docs/document-schema.md).
 
+## Stack technique
+
+- Java 21
+- Spring Boot 4.1.1 (Spring Web MVC, Spring Data MongoDB, Validation)
+- springdoc-openapi 3.1.0, pour la documentation Swagger
+- MongoDB 7.0 ou plus récent
+- Maven, via le Maven Wrapper fourni (aucune installation de Maven nécessaire)
+
 ## Prérequis
 
-- JDK 21 ou plus récent
-- MongoDB 7.0 ou plus récent, accessible sur `mongodb://localhost:27017`. La version 7.0 est le minimum pour l'opérateur `$percentile`.
+- **JDK 21 ou plus récent.** La variable `JAVA_HOME` doit pointer vers ce JDK, car c'est elle qu'utilise le Maven Wrapper.
+- **MongoDB 7.0 ou plus récent**, démarré et accessible sur `mongodb://localhost:27017`. La version 7.0 est le minimum pour l'opérateur `$percentile`.
+
+## Configuration
+
+La connexion à MongoDB se règle dans [src/main/resources/application.yaml](src/main/resources/application.yaml) :
+
+```yaml
+spring:
+  mongodb:
+    uri: mongodb://localhost:27017/blackbox
+```
+
+Les données sont stockées dans la base `blackbox`. MongoDB ne la crée qu'à la première écriture.
+
+Avec Spring Boot 4, la propriété est `spring.mongodb.uri`. L'ancienne syntaxe `spring.data.mongodb.uri` (Spring Boot 3) est ignorée sans message d'erreur.
 
 ## Lancement
 
-Le service Spring Boot n'est pas encore initialisé. Cette section sera complétée avec :
+Toutes les commandes se lancent depuis la racine du dépôt.
 
-- la commande de lancement de l'API ;
-- la commande unique du générateur de données ;
-- l'URL de Swagger et un exemple d'appel pour chaque analyse.
+**Démarrer l'API :**
+
+```powershell
+.\mvnw.cmd spring-boot:run      # Windows
+./mvnw spring-boot:run          # Linux / macOS
+```
+
+L'API démarre sur le port `8080`. Une fois lancée :
+
+- **Swagger UI** est accessible sur http://localhost:8080/swagger-ui/index.html ;
+- **la spécification OpenAPI** est accessible sur http://localhost:8080/v3/api-docs.
+
+**Lancer les tests**, avec MongoDB démarré :
+
+```powershell
+.\mvnw.cmd test
+```
+
+La commande du générateur de données et un exemple d'appel pour chaque analyse seront ajoutés avec les étapes 3 et 4.
 
 ## Structure du dépôt
 
 ```
 BoiteNoire/
 ├── docs/
-│   ├── decision-note.md     note de décision (ADR-001)
-│   └── document-schema.md   schéma documentaire commenté
-├── src/                     service Spring Boot et générateur (à venir)
+│   ├── decision-note.md                    note de décision (ADR-001)
+│   └── document-schema.md                  schéma documentaire commenté
+├── src/
+│   ├── main/java/com/pigeon/blackbox/      code du service (et, à venir, du générateur)
+│   ├── main/resources/application.yaml     configuration (connexion MongoDB)
+│   └── test/java/com/pigeon/blackbox/      tests
+├── .mvn/, mvnw, mvnw.cmd                   Maven Wrapper
+├── pom.xml
 └── README.md
 ```
