@@ -1,0 +1,17 @@
+# Profile "generator": fills the database, then stops. No web server.
+spring:
+  main:
+    web-application-type: none
+
+# Default values, each one can be overridden on the command line (e.g. --generator.events=500000)
+generator:
+  seed: 42
+  year: 2025
+  users: 3000
+  events: 300000
+  zipf-exponent: 1.0
+  batch-size: 5000
+
+logging:
+  level:
+    org.mongodb.driver: warn

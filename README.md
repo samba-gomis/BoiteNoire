@@ -10,11 +10,11 @@ Projet B2, La Plateforme. Binôme : Samba Diop Gomis, Andoniaina Njarasoa.
 |---|---|---|
 | 1 | Note de décision : relationnel ou documentaire | Fait : [docs/decision-note.md](docs/decision-note.md) |
 | 2 | Schéma documentaire commenté | Fait : [docs/document-schema.md](docs/document-schema.md), traduit en classes Java (packages `event` et `user`) |
-| 3 | Générateur de données en Java | À faire |
+| 3 | Générateur de données en Java | Fait : package `generator`, voir [Générer les données](#générer-les-données) |
 | 4 | Quatre analyses exposées et documentées dans Swagger | À faire |
 | 5 | Optimisation : explain avant, index, explain après | À faire |
 
-La note de décision a été commitée (`0ba5dcb`) avant tout code applicatif. Le modèle de données est en place (documents `events` et `users`) ; le générateur et les analyses restent à écrire.
+La note de décision a été commitée (`0ba5dcb`) avant tout code applicatif. Le modèle de données (documents `events` et `users`) et le générateur sont en place ; les analyses restent à écrire.
 
 ## Choix déjà arrêtés
 
@@ -53,6 +53,42 @@ Les données sont stockées dans la base `blackbox`. MongoDB ne la crée qu'à l
 
 Avec Spring Boot 4, la propriété est `spring.mongodb.uri`. L'ancienne syntaxe `spring.data.mongodb.uri` (Spring Boot 3) est ignorée sans message d'erreur.
 
+## Générer les données
+
+Avec MongoDB démarré, depuis la racine du dépôt :
+
+```powershell
+.\mvnw.cmd spring-boot:run "-Dspring-boot.run.profiles=generator"     # Windows : les guillemets sont nécessaires sous PowerShell
+./mvnw spring-boot:run -Dspring-boot.run.profiles=generator           # Linux / macOS
+```
+
+La commande vide les collections `events` et `users` de la base `blackbox`, les remplit, puis s'arrête, en une minute environ. On peut donc la relancer sans créer de doublons. Avec les réglages par défaut, elle produit **300 000 événements** pour **3 000 utilisateurs** sur l'année 2025.
+
+Les réglages se trouvent dans [application-generator.yaml](src/main/resources/application-generator.yaml) et peuvent être modifiés en ligne de commande :
+
+| Propriété | Défaut | Rôle |
+|---|---|---|
+| `generator.seed` | `42` | Graine aléatoire : la même graine donne exactement les mêmes données |
+| `generator.year` | `2025` | Année simulée |
+| `generator.users` | `3000` | Nombre d'utilisateurs |
+| `generator.events` | `300000` | Nombre total d'événements |
+| `generator.zipf-exponent` | `1.0` | Concentration de l'activité sur les plus gros utilisateurs |
+| `generator.batch-size` | `5000` | Nombre d'événements envoyés à MongoDB par insertion |
+
+Exemple, pour produire 500 000 événements :
+
+```powershell
+.\mvnw.cmd spring-boot:run "-Dspring-boot.run.profiles=generator" "-Dspring-boot.run.arguments=--generator.events=500000"
+```
+
+Ce que contiennent les données :
+
+- **Une population en loi de Zipf** : quelques gros utilisateurs (le plus actif produit plus de 10 % des événements) et une longue traîne de petits. Les gros utilisateurs sont plutôt les comptes les plus anciens.
+- **Des rythmes réalistes**, à l'heure de Paris : creux la nuit, pics vers 10 h et 15 h, week-ends calmes, creux en août et à Noël, et une base d'utilisateurs qui grandit au fil de l'année.
+- **Un entonnoir de conversion** : chaque utilisateur s'inscrit, environ 70 % envoient un premier message et environ 17 % finissent par s'abonner, avec des renouvellements mensuels ou annuels. Aucun événement n'est antérieur à l'inscription de son utilisateur.
+- **Trois journées d'incident**, pendant lesquelles les erreurs sont environ huit fois plus fréquentes et l'API environ trois fois plus lente.
+- **Des temps de réponse** propres à chaque endpoint, avec une longue traîne (loi log-normale).
+
 ## Lancement
 
 Toutes les commandes se lancent depuis la racine du dépôt.
@@ -75,9 +111,9 @@ L'API démarre sur le port `8080`. Une fois lancée :
 .\mvnw.cmd test
 ```
 
-Les tests écrivent dans une base séparée, `blackbox_test`, qu'ils vident à chaque exécution. Les données générées dans `blackbox` ne sont jamais touchées.
+Les tests du modèle écrivent dans une base séparée, `blackbox_test`, qu'ils vident à chaque exécution. Les données générées dans `blackbox` ne sont jamais touchées. Les tests du générateur tournent en mémoire, sans base : sur 30 000 événements, ils vérifient le volume, la reproductibilité, l'ordre de l'entonnoir et la forme des distributions.
 
-La commande du générateur de données et un exemple d'appel pour chaque analyse seront ajoutés avec les étapes 3 et 4.
+Un exemple d'appel pour chaque analyse sera ajouté avec l'étape 4.
 
 ## Structure du dépôt
 
@@ -87,8 +123,13 @@ BoiteNoire/
 │   ├── decision-note.md                    note de décision (ADR-001)
 │   └── document-schema.md                  schéma documentaire commenté
 ├── src/
-│   ├── main/java/com/pigeon/blackbox/      code du service (et, à venir, du générateur)
-│   ├── main/resources/application.yaml     configuration (connexion MongoDB)
+│   ├── main/java/com/pigeon/blackbox/
+│   │   ├── event/                          modèle des événements (socle commun et payloads)
+│   │   ├── user/                           modèle des utilisateurs
+│   │   └── generator/                      générateur de données (profil generator)
+│   ├── main/resources/
+│   │   ├── application.yaml                configuration (connexion MongoDB)
+│   │   └── application-generator.yaml      réglages du générateur
 │   └── test/java/com/pigeon/blackbox/      tests
 ├── .mvn/, mvnw, mvnw.cmd                   Maven Wrapper
 ├── pom.xml
