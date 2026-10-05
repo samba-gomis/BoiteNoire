@@ -280,9 +280,12 @@ L'événement porte donc seulement `userId`, et le profil reste dans `users`. Qu
 
 MongoDB n'impose pas de schéma. Les règles suivantes sont donc garanties par l'application :
 
-- Chaque type d'événement correspond à une classe Java. Le champ `type` détermine la classe de `payload`.
+- Chaque type d'événement correspond à une classe Java. Le champ `type` détermine la classe de `payload` ; un événement dont le payload ne correspond pas à son type est refusé.
+- Chaque classe vérifie ses règles à la construction, y compris quand Spring Data relit un document : champs obligatoires, plafonds des listes, `sessionId` présent seulement sur une plateforme interactive, plateforme `SYSTEM` réservée à `NOTIFICATION_SENT`, `delivered` cohérent avec la dernière tentative, etc.
 - Les valeurs énumérées sont en `UPPER_SNAKE_CASE` et les noms de champs en `camelCase`.
 - Les dates sont stockées en UTC, les montants en Decimal128, et les endpoints sous forme de modèles de route.
 - Un validateur `$jsonSchema` pourra être ajouté sur les champs du socle si nécessaire.
+
+Spring Data ajoute un champ technique **`_class`** à la racine de chaque événement et dans son `payload`. Il contient le nom complet de la classe Java (par exemple `com.pigeon.blackbox.event.payload.SubscriptionPaidPayload`) et sert uniquement à reconstruire le bon objet à la relecture. Les analyses ne s'en servent pas : elles s'appuient sur `type`.
 
 À ce stade, aucun index n'est créé en dehors de `_id`. Les index seront choisis après la mesure des requêtes, et justifiés dans le dossier de mesure.

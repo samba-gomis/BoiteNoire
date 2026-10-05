@@ -9,12 +9,12 @@ Projet B2, La Plateforme. Binôme : Samba Diop Gomis, Andoniaina Njarasoa.
 | Étape | Livrable | État |
 |---|---|---|
 | 1 | Note de décision : relationnel ou documentaire | Fait : [docs/decision-note.md](docs/decision-note.md) |
-| 2 | Schéma documentaire commenté | Fait : [docs/document-schema.md](docs/document-schema.md) |
+| 2 | Schéma documentaire commenté | Fait : [docs/document-schema.md](docs/document-schema.md), traduit en classes Java (packages `event` et `user`) |
 | 3 | Générateur de données en Java | À faire |
 | 4 | Quatre analyses exposées et documentées dans Swagger | À faire |
 | 5 | Optimisation : explain avant, index, explain après | À faire |
 
-La note de décision a été commitée (`0ba5dcb`) avant tout code applicatif. Le squelette du service Spring Boot est en place ; il ne contient pas encore de logique métier.
+La note de décision a été commitée (`0ba5dcb`) avant tout code applicatif. Le modèle de données est en place (documents `events` et `users`) ; le générateur et les analyses restent à écrire.
 
 ## Choix déjà arrêtés
 
@@ -74,6 +74,8 @@ L'API démarre sur le port `8080`. Une fois lancée :
 ```powershell
 .\mvnw.cmd test
 ```
+
+Les tests écrivent dans une base séparée, `blackbox_test`, qu'ils vident à chaque exécution. Les données générées dans `blackbox` ne sont jamais touchées.
 
 La commande du générateur de données et un exemple d'appel pour chaque analyse seront ajoutés avec les étapes 3 et 4.
 

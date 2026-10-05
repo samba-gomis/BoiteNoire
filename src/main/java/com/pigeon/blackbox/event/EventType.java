@@ -49,6 +49,6 @@ public enum EventType {
 	}
 
 	public static List<EventType> userInitiatedTypes() {
-		return Arrays.stream(values()).filter(EventType::userInitiated).toList();
+		return Arrays.stream(values()).filter(type -> type.userInitiated).toList();
 	}
 }
