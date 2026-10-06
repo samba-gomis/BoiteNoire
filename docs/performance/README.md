@@ -1,6 +1,12 @@
 # Dossier de mesure : optimisation par index
 
-Ce dossier mesure le coût des quatre analyses, choisit la plus coûteuse et l'optimise par un index. Les mesures « avant » ont été commitées avant la création de l'index : l'historique Git en fait foi.
+Ce dossier mesure le coût des quatre analyses, choisit la plus coûteuse et l'optimise par un index. Les mesures « avant » ont été commitées avant la création de l'index, et l'historique Git en fait foi : mesure avant (`7ad6108`), puis création de l'index (`86e6121`), puis mesure après.
+
+## Constat
+
+Sans index, chaque analyse parcourait les 300 000 documents. Avec l'index `{ type, timestamp, userId }`, l'entonnoir sur l'année n'en ouvre plus aucun (requête couverte, 157 295 clés lues) et passe de 359 à 161 ms, soit 2,2 fois plus vite.
+Le gain grandit quand la période se resserre : sur mars, l'entonnoir passe de 167 à 15 ms (11 fois plus vite), car son coût dépend désormais des événements de la période, et non plus de la taille de toute la collection.
+Le prix est modeste : 7,1 Mo d'index pour 128,6 Mo de données, environ une seconde de construction, et un arbre d'index de plus à mettre à jour à chaque insertion.
 
 ## Méthode
 
@@ -12,7 +18,7 @@ Ce dossier mesure le coût des quatre analyses, choisit la plus coûteuse et l'o
   - documents examinés (`totalDocsExamined`) et clés d'index examinées (`totalKeysExamined`) ;
   - documents retenus par le `$match`, et documents retournés (les lignes du résultat) ;
   - temps d'exécution côté serveur (`executionTimeMillis` d'explain) et durée de l'agrégation vue par l'application.
-- **Rapports bruts** : [explain-before.json](explain-before.json) contient, pour chaque cas, le pipeline mesuré, les indicateurs et la sortie complète d'`explain`.
+- **Rapports bruts** : [explain-before.json](explain-before.json) et [explain-after.json](explain-after.json) contiennent, pour chaque cas, le pipeline mesuré, les indicateurs et la sortie complète d'`explain`.
 
 Pour relancer une mesure, avec MongoDB démarré et les données générées :
 
@@ -90,4 +96,55 @@ db.events.explain("executionStats").aggregate(pipeline, { hint: "timestamp_type_
 
 Les tests [IndexCoverageTests.java](../../src/test/java/com/pigeon/blackbox/performance/IndexCoverageTests.java) vérifient l'ordre des champs, et que l'entonnoir et le top des utilisateurs restent couverts : aucun `COLLSCAN`, aucun `FETCH`, 0 document examiné.
 
-La mesure complète après index, sur les huit cas, est ajoutée dans un commit suivant.
+## Après index
+
+Mesure relancée avec le même outil, sur les mêmes données, avec l'index en place :
+
+```powershell
+.\mvnw.cmd spring-boot:run "-Dspring-boot.run.profiles=explain" "-Dspring-boot.run.arguments=--explain.label=after"
+```
+
+### La requête optimisée : l'entonnoir sur l'année
+
+| | Avant | Après |
+|---|---:|---:|
+| Plan d'exécution | `COLLSCAN → GROUP` | `IXSCAN → PROJECTION_COVERED → GROUP` |
+| Documents examinés | 300 000 | **0** |
+| Clés d'index examinées | 0 | 157 295 |
+| Documents retournés | 3 | 3 |
+| Temps côté serveur (ms) | 359 | **161** |
+| Temps côté application (ms) | 288 | **136** |
+
+Sans index, MongoDB lisait les 300 000 documents pour en retenir 157 295. Avec l'index, il ne lit que les clés de ces 157 295 événements, triées par type puis par date, et trouve dans chaque clé les trois champs dont il a besoin. `PROJECTION_COVERED` confirme que la requête est couverte : aucun document n'est ouvert.
+
+### Les huit cas
+
+| Analyse | Période | Plan après | Documents examinés (avant → après) | Clés examinées (après) | Serveur, avant → après (ms) | Gain |
+|---|---|---|---:|---:|---:|---:|
+| Top utilisateurs | année | `IXSCAN → PROJECTION_COVERED → GROUP` | 300 000 → 0 | 255 331 | 301 → 238 | × 1,3 |
+| Top utilisateurs | mars | `IXSCAN → PROJECTION_COVERED → GROUP` | 300 000 → 0 | 20 027 | 171 → 18 | × 9,5 |
+| Erreurs | année | `IXSCAN → FETCH → GROUP → GROUP` | 300 000 → 9 564 | 9 564 | 239 → 85 | × 2,8 |
+| Erreurs | mars | `IXSCAN → FETCH → GROUP → GROUP` | 300 000 → 685 | 685 | 170 → 6 | × 28 |
+| Temps de réponse | année | `IXSCAN → FETCH → PROJECTION_DEFAULT` | 300 000 → 45 710 | 45 710 | 346 → 218 | × 1,6 |
+| Temps de réponse | mars | `IXSCAN → FETCH → PROJECTION_DEFAULT` | 300 000 → 4 121 | 4 121 | 223 → 18 | × 12 |
+| **Entonnoir** | **année** | `IXSCAN → PROJECTION_COVERED → GROUP` | **300 000 → 0** | **157 295** | **359 → 161** | **× 2,2** |
+| Entonnoir | mars | `IXSCAN → PROJECTION_COVERED → GROUP` | 300 000 → 0 | 12 124 | 167 → 15 | × 11 |
+
+**Ce que montrent ces mesures :**
+
+- **Le coût suit maintenant la question posée.** Avant, chaque cas lisait 300 000 documents, quelle que soit la période. Après, le nombre de clés lues est exactement le nombre d'événements retenus par le `$match` : plus la période est courte, plus la requête est rapide.
+- **L'index ne fait pas de miracle quand la question porte sur presque toute la collection.** Le top des utilisateurs sur l'année retient 5 types sur 7, soit 255 331 événements sur 300 000 (85 %) : l'index ne peut presque rien écarter, et le gain se limite au fait de ne plus ouvrir les documents (× 1,3).
+- **Les analyses non couvertes en profitent aussi.** Les erreurs et les temps de réponse ont besoin du `payload` : ils ouvrent encore les documents (`FETCH`), mais seulement ceux qu'ils retiennent. Les erreurs de mars passent ainsi de 300 000 documents lus à 685 (× 28).
+
+## Coût de l'index
+
+| | Taille |
+|---|---:|
+| Données de la collection `events` (non compressées) | 128,6 Mo |
+| Données sur disque (compressées) | 27,8 Mo |
+| Index `_id` | 3,0 Mo |
+| Index `type_timestamp_userId` | 7,1 Mo |
+
+- **Place** : 7,1 Mo, soit environ 5,5 % de la taille des données non compressées. Un index n'est utile que s'il tient en mémoire, ce qui est largement le cas ici.
+- **Construction** : environ une seconde sur 300 000 événements, une fois, à la fin de la génération.
+- **Écritures** : chaque nouvel événement met à jour un arbre d'index de plus. Pour un flux d'événements qui ne sont jamais modifiés, et lus surtout par des analyses, ce surcoût est acceptable au vu des gains de lecture.

@@ -12,9 +12,9 @@ Projet B2, La Plateforme. Binôme : Samba Diop Gomis, Andoniaina Njarasoa.
 | 2 | Schéma documentaire commenté | Fait : [docs/document-schema.md](docs/document-schema.md), traduit en classes Java (packages `event` et `user`) |
 | 3 | Générateur de données en Java | Fait : package `generator`, voir [Générer les données](#générer-les-données) |
 | 4 | Quatre analyses exposées et documentées dans Swagger | Fait : package `analytics`, voir [Les analyses](#les-analyses) |
-| 5 | Optimisation : explain avant, index, explain après | En cours : mesures avant index faites, voir [docs/performance](docs/performance/README.md) |
+| 5 | Optimisation : explain avant, index, explain après | Fait : [docs/performance](docs/performance/README.md) |
 
-La note de décision a été commitée (`0ba5dcb`) avant tout code applicatif. Le modèle de données (documents `events` et `users`), le générateur et les quatre analyses sont en place ; il reste l'optimisation.
+La note de décision a été commitée (`0ba5dcb`) avant tout code applicatif. Les cinq étapes sont terminées : modèle de données (documents `events` et `users`), générateur, quatre analyses et optimisation par index.
 
 ## Choix déjà arrêtés
 
@@ -164,7 +164,9 @@ Le profil `explain` rejoue les pipelines des quatre analyses avec `explain("exec
 .\mvnw.cmd spring-boot:run "-Dspring-boot.run.profiles=explain" "-Dspring-boot.run.arguments=--explain.label=before"
 ```
 
-La méthode, les mesures et l'optimisation sont décrites dans le [dossier de mesure](docs/performance/README.md).
+Le label (`before`, `after`…) donne son nom au rapport ; un rapport existant n'est jamais écrasé. La méthode, les mesures et l'optimisation sont décrites dans le [dossier de mesure](docs/performance/README.md).
+
+**Résultat** : l'analyse la plus coûteuse, l'entonnoir sur l'année, lisait les 300 000 documents en 359 ms. Avec l'index composé `{ type: 1, timestamp: 1, userId: 1 }`, elle n'ouvre plus aucun document (requête couverte) et s'exécute en 161 ms, et en 15 ms sur un mois au lieu de 167 ms. L'index pèse 7,1 Mo.
 
 ## Structure du dépôt
 
