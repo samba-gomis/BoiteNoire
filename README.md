@@ -11,10 +11,10 @@ Projet B2, La Plateforme. Binôme : Samba Diop Gomis, Andoniaina Njarasoa.
 | 1 | Note de décision : relationnel ou documentaire | Fait : [docs/decision-note.md](docs/decision-note.md) |
 | 2 | Schéma documentaire commenté | Fait : [docs/document-schema.md](docs/document-schema.md), traduit en classes Java (packages `event` et `user`) |
 | 3 | Générateur de données en Java | Fait : package `generator`, voir [Générer les données](#générer-les-données) |
-| 4 | Quatre analyses exposées et documentées dans Swagger | À faire |
+| 4 | Quatre analyses exposées et documentées dans Swagger | Fait : package `analytics`, voir [Les analyses](#les-analyses) |
 | 5 | Optimisation : explain avant, index, explain après | À faire |
 
-La note de décision a été commitée (`0ba5dcb`) avant tout code applicatif. Le modèle de données (documents `events` et `users`) et le générateur sont en place ; les analyses restent à écrire.
+La note de décision a été commitée (`0ba5dcb`) avant tout code applicatif. Le modèle de données (documents `events` et `users`), le générateur et les quatre analyses sont en place ; il reste l'optimisation.
 
 ## Choix déjà arrêtés
 
@@ -111,9 +111,50 @@ L'API démarre sur le port `8080`. Une fois lancée :
 .\mvnw.cmd test
 ```
 
-Les tests du modèle écrivent dans une base séparée, `blackbox_test`, qu'ils vident à chaque exécution. Les données générées dans `blackbox` ne sont jamais touchées. Les tests du générateur tournent en mémoire, sans base : sur 30 000 événements, ils vérifient le volume, la reproductibilité, l'ordre de l'entonnoir et la forme des distributions.
+Les tests du modèle et des analyses écrivent dans une base séparée, `blackbox_test`, qu'ils vident à chaque exécution. Les données générées dans `blackbox` ne sont jamais touchées.
 
-Un exemple d'appel pour chaque analyse sera ajouté avec l'étape 4.
+- **Tests du générateur** : ils tournent en mémoire, sans base. Sur 30 000 événements, ils vérifient le volume, la reproductibilité, l'ordre de l'entonnoir et la forme des distributions.
+- **Tests des analyses** : chaque pipeline tourne sur un petit jeu de données dont le résultat est connu à l'avance. Les tests vérifient aussi les réponses 400 et la présence des quatre analyses dans la documentation OpenAPI.
+
+## Les analyses
+
+Une fois les données générées et l'API démarrée, les quatre analyses sont disponibles en `GET`. Elles sont documentées dans [Swagger UI](http://localhost:8080/swagger-ui/index.html), où l'on peut aussi les essayer.
+
+| Analyse | Endpoint | Paramètres |
+|---|---|---|
+| Utilisateurs les plus actifs | `/api/analytics/top-users` | `from` et `to` obligatoires, `limit` (10 par défaut, 100 au maximum) |
+| Erreurs par type et par jour | `/api/analytics/errors` | `from` et `to` obligatoires |
+| Temps de réponse par endpoint : moyenne et P95 | `/api/analytics/response-times` | `from` et `to` facultatifs |
+| Entonnoir de conversion | `/api/analytics/funnel` | `steps` (par défaut `USER_SIGNED_UP,MESSAGE_SENT,SUBSCRIPTION_PAID`), `from` et `to` facultatifs |
+
+Les dates sont au format ISO-8601, par exemple `2025-03-01T00:00:00Z`. `from` est inclus et `to` est exclu. Un paramètre manquant ou invalide donne une réponse **400** au format `ProblemDetail` (RFC 9457), avec un message qui explique le problème.
+
+Exemples, à ouvrir dans un navigateur ou à appeler avec `curl.exe` :
+
+```
+http://localhost:8080/api/analytics/top-users?from=2025-01-01T00:00:00Z&to=2026-01-01T00:00:00Z
+http://localhost:8080/api/analytics/errors?from=2025-06-01T00:00:00Z&to=2025-06-08T00:00:00Z
+http://localhost:8080/api/analytics/response-times
+http://localhost:8080/api/analytics/funnel
+http://localhost:8080/api/analytics/funnel?steps=USER_SIGNED_UP,MESSAGE_SENT
+```
+
+Avec les données générées par défaut, l'entonnoir renvoie par exemple :
+
+```json
+[
+  { "position": 1, "step": "USER_SIGNED_UP",    "users": 3000, "percentOfPrevious": 100.0, "percentOfFirst": 100.0 },
+  { "position": 2, "step": "MESSAGE_SENT",      "users": 2128, "percentOfPrevious": 70.9,  "percentOfFirst": 70.9 },
+  { "position": 3, "step": "SUBSCRIPTION_PAID", "users": 509,  "percentOfPrevious": 23.9,  "percentOfFirst": 17.0 }
+]
+```
+
+**Comment elles sont calculées.** Chaque analyse est un pipeline d'agrégation MongoDB, écrit dans [AnalyticsPipelines.java](src/main/java/com/pigeon/blackbox/analytics/AnalyticsPipelines.java) étape par étape, comme on le taperait dans mongosh. Chaque pipeline commence par un `$match`, le seul étage capable d'utiliser un index. MongoDB fait tous les calculs ; Java ne lit que les quelques documents de résultat pour les transformer en réponse JSON.
+
+- **Utilisateurs actifs** : seuls les événements initiés par l'utilisateur sont comptés (inscription, connexion, message, paiement, appel d'API). Le profil est joint avec `$lookup` **après** le `$limit`, soit une jointure par utilisateur retenu seulement.
+- **Erreurs** : les jours sont découpés à minuit, heure de Paris (`$dateTrunc`). Les jours sans erreur n'apparaissent pas.
+- **Temps de réponse** : regroupement par méthode HTTP et par route, car un `GET` et un `POST` sur la même route n'ont pas les mêmes temps. Le P95 est estimé par `$percentile` (MongoDB 7.0 ou plus récent).
+- **Entonnoir** : pour chaque utilisateur, on garde la première occurrence de chaque étape. Une étape ne compte que si elle arrive après la précédente.
 
 ## Structure du dépôt
 
@@ -126,7 +167,8 @@ BoiteNoire/
 │   ├── main/java/com/pigeon/blackbox/
 │   │   ├── event/                          modèle des événements (socle commun et payloads)
 │   │   ├── user/                           modèle des utilisateurs
-│   │   └── generator/                      générateur de données (profil generator)
+│   │   ├── generator/                      générateur de données (profil generator)
+│   │   └── analytics/                      les quatre analyses : pipelines, service, contrôleur REST
 │   ├── main/resources/
 │   │   ├── application.yaml                configuration (connexion MongoDB)
 │   │   └── application-generator.yaml      réglages du générateur
