@@ -1,0 +1,13 @@
+# Profile "explain": measures the four analyses with explain(), writes the report, then stops. No web server.
+# The label is required: --explain.label=before (or after); an existing report is never overwritten.
+spring:
+  main:
+    web-application-type: none
+
+explain:
+  runs: 5
+  output-directory: docs/performance
+
+logging:
+  level:
+    org.mongodb.driver: warn

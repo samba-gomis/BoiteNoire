@@ -12,7 +12,7 @@ Projet B2, La Plateforme. Binôme : Samba Diop Gomis, Andoniaina Njarasoa.
 | 2 | Schéma documentaire commenté | Fait : [docs/document-schema.md](docs/document-schema.md), traduit en classes Java (packages `event` et `user`) |
 | 3 | Générateur de données en Java | Fait : package `generator`, voir [Générer les données](#générer-les-données) |
 | 4 | Quatre analyses exposées et documentées dans Swagger | Fait : package `analytics`, voir [Les analyses](#les-analyses) |
-| 5 | Optimisation : explain avant, index, explain après | À faire |
+| 5 | Optimisation : explain avant, index, explain après | En cours : mesures avant index faites, voir [docs/performance](docs/performance/README.md) |
 
 La note de décision a été commitée (`0ba5dcb`) avant tout code applicatif. Le modèle de données (documents `events` et `users`), le générateur et les quatre analyses sont en place ; il reste l'optimisation.
 
@@ -156,22 +156,35 @@ Avec les données générées par défaut, l'entonnoir renvoie par exemple :
 - **Temps de réponse** : regroupement par méthode HTTP et par route, car un `GET` et un `POST` sur la même route n'ont pas les mêmes temps. Le P95 est estimé par `$percentile` (MongoDB 7.0 ou plus récent).
 - **Entonnoir** : pour chaque utilisateur, on garde la première occurrence de chaque étape. Une étape ne compte que si elle arrive après la précédente.
 
+## Mesurer les performances
+
+Le profil `explain` rejoue les pipelines des quatre analyses avec `explain("executionStats")` et écrit un rapport dans `docs/performance/explain-<label>.json` :
+
+```powershell
+.\mvnw.cmd spring-boot:run "-Dspring-boot.run.profiles=explain" "-Dspring-boot.run.arguments=--explain.label=before"
+```
+
+La méthode, les mesures et l'optimisation sont décrites dans le [dossier de mesure](docs/performance/README.md).
+
 ## Structure du dépôt
 
 ```
 BoiteNoire/
 ├── docs/
 │   ├── decision-note.md                    note de décision (ADR-001)
-│   └── document-schema.md                  schéma documentaire commenté
+│   ├── document-schema.md                  schéma documentaire commenté
+│   └── performance/                        dossier de mesure : méthode, rapports explain, index
 ├── src/
 │   ├── main/java/com/pigeon/blackbox/
 │   │   ├── event/                          modèle des événements (socle commun et payloads)
 │   │   ├── user/                           modèle des utilisateurs
 │   │   ├── generator/                      générateur de données (profil generator)
-│   │   └── analytics/                      les quatre analyses : pipelines, service, contrôleur REST
+│   │   ├── analytics/                      les quatre analyses : pipelines, service, contrôleur REST
+│   │   └── performance/                    mesure des analyses avec explain (profil explain)
 │   ├── main/resources/
 │   │   ├── application.yaml                configuration (connexion MongoDB)
-│   │   └── application-generator.yaml      réglages du générateur
+│   │   ├── application-generator.yaml      réglages du générateur
+│   │   └── application-explain.yaml        réglages de la mesure
 │   └── test/java/com/pigeon/blackbox/      tests
 ├── .mvn/, mvnw, mvnw.cmd                   Maven Wrapper
 ├── pom.xml

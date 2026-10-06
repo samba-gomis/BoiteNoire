@@ -1,0 +1,3700 @@
+{
+  "label": "before",
+  "measuredAt": {
+    "$date": "2026-10-06T07:29:19.42Z"
+  },
+  "mongoVersion": "8.3.11",
+  "eventCount": 300000,
+  "indexes": [
+    {
+      "v": 2,
+      "key": {
+        "_id": 1
+      },
+      "name": "_id_"
+    }
+  ],
+  "runs": 5,
+  "scenarios": [
+    {
+      "name": "top-users, year",
+      "pipeline": [
+        {
+          "$match": {
+            "type": {
+              "$in": [
+                "USER_SIGNED_UP",
+                "USER_LOGGED_IN",
+                "MESSAGE_SENT",
+                "SUBSCRIPTION_PAID",
+                "API_CALLED"
+              ]
+            },
+            "timestamp": {
+              "$gte": {
+                "$date": "2025-01-01T00:00:00Z"
+              },
+              "$lt": {
+                "$date": "2026-01-01T00:00:00Z"
+              }
+            }
+          }
+        },
+        {
+          "$group": {
+            "_id": "$userId",
+            "eventCount": {
+              "$sum": 1
+            }
+          }
+        },
+        {
+          "$sort": {
+            "eventCount": -1,
+            "_id": 1
+          }
+        },
+        {
+          "$limit": 10
+        },
+        {
+          "$lookup": {
+            "from": "users",
+            "localField": "_id",
+            "foreignField": "_id",
+            "as": "user"
+          }
+        },
+        {
+          "$unwind": {
+            "path": "$user",
+            "preserveNullAndEmptyArrays": true
+          }
+        },
+        {
+          "$project": {
+            "_id": 0,
+            "userId": "$_id",
+            "displayName": "$user.displayName",
+            "company": "$user.company",
+            "plan": "$user.plan",
+            "eventCount": 1
+          }
+        }
+      ],
+      "plan": "COLLSCAN -> GROUP, then $sort, $lookup, $project",
+      "totalDocsExamined": 300000,
+      "totalKeysExamined": 0,
+      "matchedDocuments": 255331,
+      "returnedDocuments": 10,
+      "explainExecutionTimeMillisMedian": 301,
+      "pipelineMillisMedian": 228,
+      "explain": {
+        "explainVersion": "2",
+        "stages": [
+          {
+            "$cursor": {
+              "queryPlanner": {
+                "namespace": "blackbox.events",
+                "parsedQuery": {
+                  "$and": [
+                    {
+                      "timestamp": {
+                        "$lt": {
+                          "$date": "2026-01-01T00:00:00Z"
+                        }
+                      }
+                    },
+                    {
+                      "timestamp": {
+                        "$gte": {
+                          "$date": "2025-01-01T00:00:00Z"
+                        }
+                      }
+                    },
+                    {
+                      "type": {
+                        "$in": [
+                          "API_CALLED",
+                          "MESSAGE_SENT",
+                          "SUBSCRIPTION_PAID",
+                          "USER_LOGGED_IN",
+                          "USER_SIGNED_UP"
+                        ]
+                      }
+                    }
+                  ]
+                },
+                "indexFilterSet": false,
+                "queryHash": "2775E87F",
+                "planCacheShapeHash": "2775E87F",
+                "planCacheKey": "29BEBD5F",
+                "optimizationTimeMillis": 0,
+                "cursorType": "regular",
+                "maxIndexedOrSolutionsReached": false,
+                "maxIndexedAndSolutionsReached": false,
+                "maxScansToExplodeReached": false,
+                "prunedSimilarIndexes": false,
+                "winningPlan": {
+                  "isCached": false,
+                  "queryPlan": {
+                    "stage": "GROUP",
+                    "planNodeId": 3,
+                    "inputStage": {
+                      "stage": "COLLSCAN",
+                      "planNodeId": 1,
+                      "filter": {
+                        "$and": [
+                          {
+                            "timestamp": {
+                              "$lt": {
+                                "$date": "2026-01-01T00:00:00Z"
+                              }
+                            }
+                          },
+                          {
+                            "timestamp": {
+                              "$gte": {
+                                "$date": "2025-01-01T00:00:00Z"
+                              }
+                            }
+                          },
+                          {
+                            "type": {
+                              "$in": [
+                                "API_CALLED",
+                                "MESSAGE_SENT",
+                                "SUBSCRIPTION_PAID",
+                                "USER_LOGGED_IN",
+                                "USER_SIGNED_UP"
+                              ]
+                            }
+                          }
+                        ]
+                      },
+                      "nss": "blackbox.events",
+                      "direction": "forward"
+                    }
+                  },
+                  "slotBasedPlan": {
+                    "slots": "$$RESULT=s10 env: { s6 = InList(\"USER_SIGNED_UP\" \"USER_LOGGED_IN\" \"MESSAGE_SENT\" \"SUBSCRIPTION_PAID\" \"API_CALLED\") }",
+                    "stages": "[3] project [s10 = newObj(\"_id\", s9, \"eventCount\", s7)] \n[3] group [s9] [s7 = _internalCount::accumulate(s7, 1)] spillSlots[s8] mergingExprs[_internalCount::merge(s8)] \n[3] project [s9 = (s3 ?: null)] \n[1] filter {(traverseF(s4, lambda(l4.0) { ((move(l4.0) < Date(1767225600000)) ?: false) }, false) && traverseF(s4, lambda(l5.0) { ((move(l5.0) >= Date(1735689600000)) ?: false) }, false) && traverseF(s5, lambda(l6.0) { isMember(move(l6.0), s6) }, false))} \n[1] scan generic [s1 = record, s2 = recordId] [s3 = userId, s4 = timestamp, s5 = type] @\"fe5637cd-2e2f-4374-aad1-c21097fde912\" "
+                  }
+                },
+                "rejectedPlans": []
+              },
+              "executionStats": {
+                "executionSuccess": true,
+                "nReturned": 3000,
+                "executionTimeMillis": 289,
+                "totalKeysExamined": 0,
+                "totalDocsExamined": 300000,
+                "executionStages": {
+                  "stage": "project",
+                  "planNodeId": 3,
+                  "nReturned": 3000,
+                  "executionTimeMillisEstimate": 282,
+                  "opens": 1,
+                  "closes": 1,
+                  "saveState": 26,
+                  "restoreState": 25,
+                  "isEOF": 1,
+                  "projections": {
+                    "10": "newObj(\"_id\", s9, \"eventCount\", s7) "
+                  },
+                  "inputStage": {
+                    "stage": "group",
+                    "planNodeId": 3,
+                    "nReturned": 3000,
+                    "executionTimeMillisEstimate": 282,
+                    "opens": 1,
+                    "closes": 1,
+                    "saveState": 26,
+                    "restoreState": 25,
+                    "isEOF": 1,
+                    "groupBySlots": [
+                      9
+                    ],
+                    "expressions": {
+                      "7": "_internalCount::accumulate(s7, 1) ",
+                      "initExprs": {
+                        "7": null,
+                        "mergingExprs": {
+                          "8": "_internalCount::merge(s8) "
+                        }
+                      }
+                    },
+                    "usedDisk": false,
+                    "spills": 0,
+                    "spilledBytes": 0,
+                    "spilledRecords": 0,
+                    "spilledDataStorageSize": 0,
+                    "peakTrackedMemBytes": 195000,
+                    "inputStage": {
+                      "stage": "project",
+                      "planNodeId": 3,
+                      "nReturned": 255331,
+                      "executionTimeMillisEstimate": 224,
+                      "opens": 1,
+                      "closes": 1,
+                      "saveState": 26,
+                      "restoreState": 25,
+                      "isEOF": 1,
+                      "projections": {
+                        "9": "(s3 ?: null) "
+                      },
+                      "inputStage": {
+                        "stage": "filter",
+                        "planNodeId": 1,
+                        "nReturned": 255331,
+                        "executionTimeMillisEstimate": 220,
+                        "opens": 1,
+                        "closes": 1,
+                        "saveState": 26,
+                        "restoreState": 25,
+                        "isEOF": 1,
+                        "numTested": 300000,
+                        "filter": "(traverseF(s4, lambda(l4.0) { ((move(l4.0) < Date(1767225600000)) ?: false) }, false) && traverseF(s4, lambda(l5.0) { ((move(l5.0) >= Date(1735689600000)) ?: false) }, false) && traverseF(s5, lambda(l6.0) { isMember(move(l6.0), s6) }, false)) ",
+                        "inputStage": {
+                          "stage": "scan",
+                          "planNodeId": 1,
+                          "nReturned": 300000,
+                          "executionTimeMillisEstimate": 108,
+                          "opens": 1,
+                          "closes": 1,
+                          "saveState": 26,
+                          "restoreState": 25,
+                          "isEOF": 1,
+                          "numReads": 300000,
+                          "recordSlot": 1,
+                          "recordIdSlot": 2,
+                          "scanFieldNames": [
+                            "userId",
+                            "timestamp",
+                            "type"
+                          ],
+                          "scanFieldSlots": [
+                            3,
+                            4,
+                            5
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "nReturned": 3000,
+            "executionTimeMillisEstimate": 287
+          },
+          {
+            "$sort": {
+              "sortKey": {
+                "eventCount": -1,
+                "_id": 1
+              },
+              "limit": 10
+            },
+            "totalDataSizeSortedBytesEstimate": 3170,
+            "usedDisk": false,
+            "spills": 0,
+            "spilledBytes": 0,
+            "spilledRecords": 0,
+            "spilledDataStorageSize": 0,
+            "nReturned": 10,
+            "executionTimeMillisEstimate": 287,
+            "peakTrackedMemBytes": 3170
+          },
+          {
+            "$lookup": {
+              "from": "users",
+              "as": "user",
+              "localField": "_id",
+              "foreignField": "_id",
+              "unwinding": {
+                "preserveNullAndEmptyArrays": true
+              }
+            },
+            "nReturned": 10,
+            "executionTimeMillisEstimate": 290,
+            "totalDocsExamined": 10,
+            "totalKeysExamined": 10,
+            "collectionScans": 0,
+            "indexesUsed": [
+              "_id_"
+            ]
+          },
+          {
+            "$project": {
+              "eventCount": true,
+              "userId": "$_id",
+              "displayName": "$user.displayName",
+              "company": "$user.company",
+              "plan": "$user.plan",
+              "_id": false
+            },
+            "nReturned": 10,
+            "executionTimeMillisEstimate": 290
+          }
+        ],
+        "queryShapeHash": "2CA0DBC2C48B5A156EF0AF35E8F7AEE91DC6EA1EA393BF52C42D2CAB956BF3F2",
+        "peakTrackedMemBytes": 195000,
+        "serverInfo": {
+          "host": "King_Gomis15",
+          "port": 27017,
+          "version": "8.3.11",
+          "gitVersion": "b8b83d6e6e1aed495578ad8c6f9234ad329c9955"
+        },
+        "serverParameters": {
+          "internalQueryFacetBufferSizeBytes": 104857600,
+          "internalDocumentSourceGroupMaxMemoryBytes": 104857600,
+          "internalQueryMaxBlockingSortMemoryUsageBytes": 104857600,
+          "internalDocumentSourceSetWindowFieldsMaxMemoryBytes": 104857600,
+          "internalQueryFacetMaxOutputDocSizeBytes": 104857600,
+          "internalLookupStageIntermediateDocumentMaxSizeBytes": 104857600,
+          "internalQueryProhibitBlockingMergeOnMongoS": 0,
+          "internalQueryMaxAddToSetBytes": 104857600,
+          "internalQueryFrameworkControl": "trySbeRestricted",
+          "internalQueryPlannerIgnoreIndexWithCollationForRegex": 1
+        },
+        "command": {
+          "aggregate": "events",
+          "pipeline": [
+            {
+              "$match": {
+                "type": {
+                  "$in": [
+                    "USER_SIGNED_UP",
+                    "USER_LOGGED_IN",
+                    "MESSAGE_SENT",
+                    "SUBSCRIPTION_PAID",
+                    "API_CALLED"
+                  ]
+                },
+                "timestamp": {
+                  "$gte": {
+                    "$date": "2025-01-01T00:00:00Z"
+                  },
+                  "$lt": {
+                    "$date": "2026-01-01T00:00:00Z"
+                  }
+                }
+              }
+            },
+            {
+              "$group": {
+                "_id": "$userId",
+                "eventCount": {
+                  "$sum": 1
+                }
+              }
+            },
+            {
+              "$sort": {
+                "eventCount": -1,
+                "_id": 1
+              }
+            },
+            {
+              "$limit": 10
+            },
+            {
+              "$lookup": {
+                "from": "users",
+                "localField": "_id",
+                "foreignField": "_id",
+                "as": "user"
+              }
+            },
+            {
+              "$unwind": {
+                "path": "$user",
+                "preserveNullAndEmptyArrays": true
+              }
+            },
+            {
+              "$project": {
+                "_id": 0,
+                "userId": "$_id",
+                "displayName": "$user.displayName",
+                "company": "$user.company",
+                "plan": "$user.plan",
+                "eventCount": 1
+              }
+            }
+          ],
+          "cursor": {},
+          "allowDiskUse": true,
+          "$db": "blackbox"
+        },
+        "ok": 1.0
+      }
+    },
+    {
+      "name": "top-users, March",
+      "pipeline": [
+        {
+          "$match": {
+            "type": {
+              "$in": [
+                "USER_SIGNED_UP",
+                "USER_LOGGED_IN",
+                "MESSAGE_SENT",
+                "SUBSCRIPTION_PAID",
+                "API_CALLED"
+              ]
+            },
+            "timestamp": {
+              "$gte": {
+                "$date": "2025-03-01T00:00:00Z"
+              },
+              "$lt": {
+                "$date": "2025-04-01T00:00:00Z"
+              }
+            }
+          }
+        },
+        {
+          "$group": {
+            "_id": "$userId",
+            "eventCount": {
+              "$sum": 1
+            }
+          }
+        },
+        {
+          "$sort": {
+            "eventCount": -1,
+            "_id": 1
+          }
+        },
+        {
+          "$limit": 10
+        },
+        {
+          "$lookup": {
+            "from": "users",
+            "localField": "_id",
+            "foreignField": "_id",
+            "as": "user"
+          }
+        },
+        {
+          "$unwind": {
+            "path": "$user",
+            "preserveNullAndEmptyArrays": true
+          }
+        },
+        {
+          "$project": {
+            "_id": 0,
+            "userId": "$_id",
+            "displayName": "$user.displayName",
+            "company": "$user.company",
+            "plan": "$user.plan",
+            "eventCount": 1
+          }
+        }
+      ],
+      "plan": "COLLSCAN -> GROUP, then $sort, $lookup, $project",
+      "totalDocsExamined": 300000,
+      "totalKeysExamined": 0,
+      "matchedDocuments": 20027,
+      "returnedDocuments": 10,
+      "explainExecutionTimeMillisMedian": 171,
+      "pipelineMillisMedian": 136,
+      "explain": {
+        "explainVersion": "2",
+        "stages": [
+          {
+            "$cursor": {
+              "queryPlanner": {
+                "namespace": "blackbox.events",
+                "parsedQuery": {
+                  "$and": [
+                    {
+                      "timestamp": {
+                        "$lt": {
+                          "$date": "2025-04-01T00:00:00Z"
+                        }
+                      }
+                    },
+                    {
+                      "timestamp": {
+                        "$gte": {
+                          "$date": "2025-03-01T00:00:00Z"
+                        }
+                      }
+                    },
+                    {
+                      "type": {
+                        "$in": [
+                          "API_CALLED",
+                          "MESSAGE_SENT",
+                          "SUBSCRIPTION_PAID",
+                          "USER_LOGGED_IN",
+                          "USER_SIGNED_UP"
+                        ]
+                      }
+                    }
+                  ]
+                },
+                "indexFilterSet": false,
+                "queryHash": "2775E87F",
+                "planCacheShapeHash": "2775E87F",
+                "planCacheKey": "29BEBD5F",
+                "optimizationTimeMillis": 0,
+                "cursorType": "regular",
+                "maxIndexedOrSolutionsReached": false,
+                "maxIndexedAndSolutionsReached": false,
+                "maxScansToExplodeReached": false,
+                "prunedSimilarIndexes": false,
+                "winningPlan": {
+                  "isCached": false,
+                  "queryPlan": {
+                    "stage": "GROUP",
+                    "planNodeId": 3,
+                    "inputStage": {
+                      "stage": "COLLSCAN",
+                      "planNodeId": 1,
+                      "filter": {
+                        "$and": [
+                          {
+                            "timestamp": {
+                              "$lt": {
+                                "$date": "2025-04-01T00:00:00Z"
+                              }
+                            }
+                          },
+                          {
+                            "timestamp": {
+                              "$gte": {
+                                "$date": "2025-03-01T00:00:00Z"
+                              }
+                            }
+                          },
+                          {
+                            "type": {
+                              "$in": [
+                                "API_CALLED",
+                                "MESSAGE_SENT",
+                                "SUBSCRIPTION_PAID",
+                                "USER_LOGGED_IN",
+                                "USER_SIGNED_UP"
+                              ]
+                            }
+                          }
+                        ]
+                      },
+                      "nss": "blackbox.events",
+                      "direction": "forward"
+                    }
+                  },
+                  "slotBasedPlan": {
+                    "slots": "$$RESULT=s10 env: { s6 = InList(\"USER_SIGNED_UP\" \"USER_LOGGED_IN\" \"MESSAGE_SENT\" \"SUBSCRIPTION_PAID\" \"API_CALLED\") }",
+                    "stages": "[3] project [s10 = newObj(\"_id\", s9, \"eventCount\", s7)] \n[3] group [s9] [s7 = _internalCount::accumulate(s7, 1)] spillSlots[s8] mergingExprs[_internalCount::merge(s8)] \n[3] project [s9 = (s3 ?: null)] \n[1] filter {(traverseF(s4, lambda(l4.0) { ((move(l4.0) < Date(1743465600000)) ?: false) }, false) && traverseF(s4, lambda(l5.0) { ((move(l5.0) >= Date(1740787200000)) ?: false) }, false) && traverseF(s5, lambda(l6.0) { isMember(move(l6.0), s6) }, false))} \n[1] scan generic [s1 = record, s2 = recordId] [s3 = userId, s4 = timestamp, s5 = type] @\"fe5637cd-2e2f-4374-aad1-c21097fde912\" "
+                  }
+                },
+                "rejectedPlans": []
+              },
+              "executionStats": {
+                "executionSuccess": true,
+                "nReturned": 462,
+                "executionTimeMillis": 201,
+                "totalKeysExamined": 0,
+                "totalDocsExamined": 300000,
+                "executionStages": {
+                  "stage": "project",
+                  "planNodeId": 3,
+                  "nReturned": 462,
+                  "executionTimeMillisEstimate": 197,
+                  "opens": 1,
+                  "closes": 1,
+                  "saveState": 16,
+                  "restoreState": 15,
+                  "isEOF": 1,
+                  "projections": {
+                    "10": "newObj(\"_id\", s9, \"eventCount\", s7) "
+                  },
+                  "inputStage": {
+                    "stage": "group",
+                    "planNodeId": 3,
+                    "nReturned": 462,
+                    "executionTimeMillisEstimate": 197,
+                    "opens": 1,
+                    "closes": 1,
+                    "saveState": 16,
+                    "restoreState": 15,
+                    "isEOF": 1,
+                    "groupBySlots": [
+                      9
+                    ],
+                    "expressions": {
+                      "7": "_internalCount::accumulate(s7, 1) ",
+                      "initExprs": {
+                        "7": null,
+                        "mergingExprs": {
+                          "8": "_internalCount::merge(s8) "
+                        }
+                      }
+                    },
+                    "usedDisk": false,
+                    "spills": 0,
+                    "spilledBytes": 0,
+                    "spilledRecords": 0,
+                    "spilledDataStorageSize": 0,
+                    "peakTrackedMemBytes": 30030,
+                    "inputStage": {
+                      "stage": "project",
+                      "planNodeId": 3,
+                      "nReturned": 20027,
+                      "executionTimeMillisEstimate": 187,
+                      "opens": 1,
+                      "closes": 1,
+                      "saveState": 16,
+                      "restoreState": 15,
+                      "isEOF": 1,
+                      "projections": {
+                        "9": "(s3 ?: null) "
+                      },
+                      "inputStage": {
+                        "stage": "filter",
+                        "planNodeId": 1,
+                        "nReturned": 20027,
+                        "executionTimeMillisEstimate": 187,
+                        "opens": 1,
+                        "closes": 1,
+                        "saveState": 16,
+                        "restoreState": 15,
+                        "isEOF": 1,
+                        "numTested": 300000,
+                        "filter": "(traverseF(s4, lambda(l4.0) { ((move(l4.0) < Date(1743465600000)) ?: false) }, false) && traverseF(s4, lambda(l5.0) { ((move(l5.0) >= Date(1740787200000)) ?: false) }, false) && traverseF(s5, lambda(l6.0) { isMember(move(l6.0), s6) }, false)) ",
+                        "inputStage": {
+                          "stage": "scan",
+                          "planNodeId": 1,
+                          "nReturned": 300000,
+                          "executionTimeMillisEstimate": 117,
+                          "opens": 1,
+                          "closes": 1,
+                          "saveState": 16,
+                          "restoreState": 15,
+                          "isEOF": 1,
+                          "numReads": 300000,
+                          "recordSlot": 1,
+                          "recordIdSlot": 2,
+                          "scanFieldNames": [
+                            "userId",
+                            "timestamp",
+                            "type"
+                          ],
+                          "scanFieldSlots": [
+                            3,
+                            4,
+                            5
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "nReturned": 462,
+            "executionTimeMillisEstimate": 200
+          },
+          {
+            "$sort": {
+              "sortKey": {
+                "eventCount": -1,
+                "_id": 1
+              },
+              "limit": 10
+            },
+            "totalDataSizeSortedBytesEstimate": 3170,
+            "usedDisk": false,
+            "spills": 0,
+            "spilledBytes": 0,
+            "spilledRecords": 0,
+            "spilledDataStorageSize": 0,
+            "nReturned": 10,
+            "executionTimeMillisEstimate": 200,
+            "peakTrackedMemBytes": 3170
+          },
+          {
+            "$lookup": {
+              "from": "users",
+              "as": "user",
+              "localField": "_id",
+              "foreignField": "_id",
+              "unwinding": {
+                "preserveNullAndEmptyArrays": true
+              }
+            },
+            "nReturned": 10,
+            "executionTimeMillisEstimate": 201,
+            "totalDocsExamined": 10,
+            "totalKeysExamined": 10,
+            "collectionScans": 0,
+            "indexesUsed": [
+              "_id_"
+            ]
+          },
+          {
+            "$project": {
+              "eventCount": true,
+              "userId": "$_id",
+              "displayName": "$user.displayName",
+              "company": "$user.company",
+              "plan": "$user.plan",
+              "_id": false
+            },
+            "nReturned": 10,
+            "executionTimeMillisEstimate": 201
+          }
+        ],
+        "queryShapeHash": "2CA0DBC2C48B5A156EF0AF35E8F7AEE91DC6EA1EA393BF52C42D2CAB956BF3F2",
+        "peakTrackedMemBytes": 30030,
+        "serverInfo": {
+          "host": "King_Gomis15",
+          "port": 27017,
+          "version": "8.3.11",
+          "gitVersion": "b8b83d6e6e1aed495578ad8c6f9234ad329c9955"
+        },
+        "serverParameters": {
+          "internalQueryFacetBufferSizeBytes": 104857600,
+          "internalDocumentSourceGroupMaxMemoryBytes": 104857600,
+          "internalQueryMaxBlockingSortMemoryUsageBytes": 104857600,
+          "internalDocumentSourceSetWindowFieldsMaxMemoryBytes": 104857600,
+          "internalQueryFacetMaxOutputDocSizeBytes": 104857600,
+          "internalLookupStageIntermediateDocumentMaxSizeBytes": 104857600,
+          "internalQueryProhibitBlockingMergeOnMongoS": 0,
+          "internalQueryMaxAddToSetBytes": 104857600,
+          "internalQueryFrameworkControl": "trySbeRestricted",
+          "internalQueryPlannerIgnoreIndexWithCollationForRegex": 1
+        },
+        "command": {
+          "aggregate": "events",
+          "pipeline": [
+            {
+              "$match": {
+                "type": {
+                  "$in": [
+                    "USER_SIGNED_UP",
+                    "USER_LOGGED_IN",
+                    "MESSAGE_SENT",
+                    "SUBSCRIPTION_PAID",
+                    "API_CALLED"
+                  ]
+                },
+                "timestamp": {
+                  "$gte": {
+                    "$date": "2025-03-01T00:00:00Z"
+                  },
+                  "$lt": {
+                    "$date": "2025-04-01T00:00:00Z"
+                  }
+                }
+              }
+            },
+            {
+              "$group": {
+                "_id": "$userId",
+                "eventCount": {
+                  "$sum": 1
+                }
+              }
+            },
+            {
+              "$sort": {
+                "eventCount": -1,
+                "_id": 1
+              }
+            },
+            {
+              "$limit": 10
+            },
+            {
+              "$lookup": {
+                "from": "users",
+                "localField": "_id",
+                "foreignField": "_id",
+                "as": "user"
+              }
+            },
+            {
+              "$unwind": {
+                "path": "$user",
+                "preserveNullAndEmptyArrays": true
+              }
+            },
+            {
+              "$project": {
+                "_id": 0,
+                "userId": "$_id",
+                "displayName": "$user.displayName",
+                "company": "$user.company",
+                "plan": "$user.plan",
+                "eventCount": 1
+              }
+            }
+          ],
+          "cursor": {},
+          "allowDiskUse": true,
+          "$db": "blackbox"
+        },
+        "ok": 1.0
+      }
+    },
+    {
+      "name": "errors, year",
+      "pipeline": [
+        {
+          "$match": {
+            "type": "APPLICATION_ERROR",
+            "timestamp": {
+              "$gte": {
+                "$date": "2025-01-01T00:00:00Z"
+              },
+              "$lt": {
+                "$date": "2026-01-01T00:00:00Z"
+              }
+            }
+          }
+        },
+        {
+          "$group": {
+            "_id": {
+              "day": {
+                "$dateTrunc": {
+                  "date": "$timestamp",
+                  "unit": "day",
+                  "timezone": "Europe/Paris"
+                }
+              },
+              "errorType": "$payload.errorType"
+            },
+            "count": {
+              "$sum": 1
+            }
+          }
+        },
+        {
+          "$group": {
+            "_id": "$_id.day",
+            "total": {
+              "$sum": "$count"
+            },
+            "byType": {
+              "$push": {
+                "errorType": "$_id.errorType",
+                "count": "$count"
+              }
+            }
+          }
+        },
+        {
+          "$sort": {
+            "_id": 1
+          }
+        },
+        {
+          "$project": {
+            "_id": 0,
+            "day": "$_id",
+            "total": 1,
+            "byType": {
+              "$sortArray": {
+                "input": "$byType",
+                "sortBy": {
+                  "count": -1,
+                  "errorType": 1
+                }
+              }
+            }
+          }
+        }
+      ],
+      "plan": "COLLSCAN -> GROUP -> GROUP, then $sort, $project",
+      "totalDocsExamined": 300000,
+      "totalKeysExamined": 0,
+      "matchedDocuments": 9564,
+      "returnedDocuments": 364,
+      "explainExecutionTimeMillisMedian": 239,
+      "pipelineMillisMedian": 222,
+      "explain": {
+        "explainVersion": "2",
+        "stages": [
+          {
+            "$cursor": {
+              "queryPlanner": {
+                "namespace": "blackbox.events",
+                "parsedQuery": {
+                  "$and": [
+                    {
+                      "type": {
+                        "$eq": "APPLICATION_ERROR"
+                      }
+                    },
+                    {
+                      "timestamp": {
+                        "$lt": {
+                          "$date": "2026-01-01T00:00:00Z"
+                        }
+                      }
+                    },
+                    {
+                      "timestamp": {
+                        "$gte": {
+                          "$date": "2025-01-01T00:00:00Z"
+                        }
+                      }
+                    }
+                  ]
+                },
+                "indexFilterSet": false,
+                "queryHash": "CC0A3948",
+                "planCacheShapeHash": "CC0A3948",
+                "planCacheKey": "C958913A",
+                "optimizationTimeMillis": 0,
+                "cursorType": "regular",
+                "maxIndexedOrSolutionsReached": false,
+                "maxIndexedAndSolutionsReached": false,
+                "maxScansToExplodeReached": false,
+                "prunedSimilarIndexes": false,
+                "winningPlan": {
+                  "isCached": false,
+                  "queryPlan": {
+                    "stage": "GROUP",
+                    "planNodeId": 4,
+                    "inputStage": {
+                      "stage": "GROUP",
+                      "planNodeId": 3,
+                      "inputStage": {
+                        "stage": "COLLSCAN",
+                        "planNodeId": 1,
+                        "filter": {
+                          "$and": [
+                            {
+                              "type": {
+                                "$eq": "APPLICATION_ERROR"
+                              }
+                            },
+                            {
+                              "timestamp": {
+                                "$lt": {
+                                  "$date": "2026-01-01T00:00:00Z"
+                                }
+                              }
+                            },
+                            {
+                              "timestamp": {
+                                "$gte": {
+                                  "$date": "2025-01-01T00:00:00Z"
+                                }
+                              }
+                            }
+                          ]
+                        },
+                        "nss": "blackbox.events",
+                        "direction": "forward"
+                      }
+                    }
+                  },
+                  "slotBasedPlan": {
+                    "slots": "$$RESULT=s20 env: { s7 = TimeZoneDatabase(America/Lower_Princes...Europe/Monaco) (timeZoneDB) }",
+                    "stages": "[4] project [s20 = newObj(\"_id\", s18, \"total\", s19, \"byType\", s16)] \n[4] project [s19 = doubleDoubleSumFinalize(s15)] \n[4] group [s18] [s15 = aggDoubleDoubleSum(s8), s16 = _internalPush::accumulate(s16, newObj(\"errorType\", s13, \"count\", s8))] spillSlots[s14, s17] mergingExprs[aggMergeDoubleDoubleSums(s14), _internalPush::merge(s17)] \n[4] project [s18 = (s12 ?: null)] \n[4] extract_field_paths inputs[s8 = Get(count)/Id, s11 = Get(_id)/Id] outputs[s12 = Get(_id)/Traverse/Get(day)/Id, s13 = Get(_id)/Traverse/Get(errorType)/Id] \n[3] project [s11 = newObj(\"day\", s10, \"errorType\", s6)] \n[3] group [s10, s6] [s8 = _internalCount::accumulate(s8, 1)] spillSlots[s9] mergingExprs[_internalCount::merge(s9)] \n[3] project [s10 = \n    let [\n        l10.0 = dateTrunc(s7, s4, \"day\", 1ll, \"Europe/Paris\", \"sun\") \n    ] \n    in \n        if exists(l10.0) \n        then makeOwn(move(l10.0)) \n        else \n            if (typeMatch(s4, 1088) ?: true) \n            then null \n            elif typeMatch(s4, 131712) \n            then Nothing \n            else fail(7157932, \"$dateTrunc parameter 'date' must be coercible to date\") \n] \n[3] extract_field_paths inputs[s3 = Get(payload)/Id, s4 = Get(timestamp)/Id] outputs[s6 = Get(payload)/Traverse/Get(errorType)/Id] \n[1] filter {(traverseF(s5, lambda(l4.0) { ((move(l4.0) == \"APPLICATION_ERROR\") ?: false) }, false) && traverseF(s4, lambda(l5.0) { ((move(l5.0) < Date(1767225600000)) ?: false) }, false) && traverseF(s4, lambda(l6.0) { ((move(l6.0) >= Date(1735689600000)) ?: false) }, false))} \n[1] scan generic [s1 = record, s2 = recordId] [s3 = payload, s4 = timestamp, s5 = type] @\"fe5637cd-2e2f-4374-aad1-c21097fde912\" "
+                  }
+                },
+                "rejectedPlans": []
+              },
+              "executionStats": {
+                "executionSuccess": true,
+                "nReturned": 364,
+                "executionTimeMillis": 216,
+                "totalKeysExamined": 0,
+                "totalDocsExamined": 300000,
+                "executionStages": {
+                  "stage": "project",
+                  "planNodeId": 4,
+                  "nReturned": 364,
+                  "executionTimeMillisEstimate": 202,
+                  "opens": 1,
+                  "closes": 1,
+                  "saveState": 18,
+                  "restoreState": 17,
+                  "isEOF": 1,
+                  "projections": {
+                    "20": "newObj(\"_id\", s18, \"total\", s19, \"byType\", s16) "
+                  },
+                  "inputStage": {
+                    "stage": "project",
+                    "planNodeId": 4,
+                    "nReturned": 364,
+                    "executionTimeMillisEstimate": 202,
+                    "opens": 1,
+                    "closes": 1,
+                    "saveState": 18,
+                    "restoreState": 17,
+                    "isEOF": 1,
+                    "projections": {
+                      "19": "doubleDoubleSumFinalize(s15) "
+                    },
+                    "inputStage": {
+                      "stage": "group",
+                      "planNodeId": 4,
+                      "nReturned": 364,
+                      "executionTimeMillisEstimate": 202,
+                      "opens": 1,
+                      "closes": 1,
+                      "saveState": 18,
+                      "restoreState": 17,
+                      "isEOF": 1,
+                      "groupBySlots": [
+                        18
+                      ],
+                      "expressions": {
+                        "15": "aggDoubleDoubleSum(s8) ",
+                        "16": "_internalPush::accumulate(s16, newObj(\"errorType\", s13, \"count\", s8)) ",
+                        "initExprs": {
+                          "15": null,
+                          "16": null,
+                          "mergingExprs": {
+                            "14": "aggMergeDoubleDoubleSums(s14) ",
+                            "17": "_internalPush::merge(s17) "
+                          }
+                        }
+                      },
+                      "usedDisk": false,
+                      "spills": 0,
+                      "spilledBytes": 0,
+                      "spilledRecords": 0,
+                      "spilledDataStorageSize": 0,
+                      "peakTrackedMemBytes": 207774,
+                      "inputStage": {
+                        "stage": "project",
+                        "planNodeId": 4,
+                        "nReturned": 1686,
+                        "executionTimeMillisEstimate": 202,
+                        "opens": 1,
+                        "closes": 1,
+                        "saveState": 18,
+                        "restoreState": 17,
+                        "isEOF": 1,
+                        "projections": {
+                          "18": "(s12 ?: null) "
+                        },
+                        "inputStage": {
+                          "stage": "extract_field_paths",
+                          "planNodeId": 4,
+                          "nReturned": 1686,
+                          "executionTimeMillisEstimate": 202,
+                          "opens": 1,
+                          "closes": 1,
+                          "saveState": 18,
+                          "restoreState": 17,
+                          "isEOF": 1,
+                          "inputStage": {
+                            "stage": "project",
+                            "planNodeId": 3,
+                            "nReturned": 1686,
+                            "executionTimeMillisEstimate": 202,
+                            "opens": 1,
+                            "closes": 1,
+                            "saveState": 18,
+                            "restoreState": 17,
+                            "isEOF": 1,
+                            "projections": {
+                              "11": "newObj(\"day\", s10, \"errorType\", s6) "
+                            },
+                            "inputStage": {
+                              "stage": "group",
+                              "planNodeId": 3,
+                              "nReturned": 1686,
+                              "executionTimeMillisEstimate": 202,
+                              "opens": 1,
+                              "closes": 1,
+                              "saveState": 18,
+                              "restoreState": 17,
+                              "isEOF": 1,
+                              "groupBySlots": [
+                                10,
+                                6
+                              ],
+                              "expressions": {
+                                "8": "_internalCount::accumulate(s8, 1) ",
+                                "initExprs": {
+                                  "8": null,
+                                  "mergingExprs": {
+                                    "9": "_internalCount::merge(s9) "
+                                  }
+                                }
+                              },
+                              "usedDisk": false,
+                              "spills": 0,
+                              "spilledBytes": 0,
+                              "spilledRecords": 0,
+                              "spilledDataStorageSize": 0,
+                              "peakTrackedMemBytes": 129324,
+                              "inputStage": {
+                                "stage": "project",
+                                "planNodeId": 3,
+                                "nReturned": 9564,
+                                "executionTimeMillisEstimate": 188,
+                                "opens": 1,
+                                "closes": 1,
+                                "saveState": 18,
+                                "restoreState": 17,
+                                "isEOF": 1,
+                                "projections": {
+                                  "10": "\n    let [\n        l10.0 = dateTrunc(s7, s4, \"day\", 1ll, \"Europe/Paris\", \"sun\") \n    ] \n    in \n        if exists(l10.0) \n        then makeOwn(move(l10.0)) \n        else \n            if (typeMatch(s4, 1088) ?: true) \n            then null \n            elif typeMatch(s4, 131712) \n            then Nothing \n            else fail(7157932, \"$dateTrunc parameter 'date' must be coercible to date\") \n"
+                                },
+                                "inputStage": {
+                                  "stage": "extract_field_paths",
+                                  "planNodeId": 3,
+                                  "nReturned": 9564,
+                                  "executionTimeMillisEstimate": 164,
+                                  "opens": 1,
+                                  "closes": 1,
+                                  "saveState": 18,
+                                  "restoreState": 17,
+                                  "isEOF": 1,
+                                  "inputStage": {
+                                    "stage": "filter",
+                                    "planNodeId": 1,
+                                    "nReturned": 9564,
+                                    "executionTimeMillisEstimate": 164,
+                                    "opens": 1,
+                                    "closes": 1,
+                                    "saveState": 18,
+                                    "restoreState": 17,
+                                    "isEOF": 1,
+                                    "numTested": 300000,
+                                    "filter": "(traverseF(s5, lambda(l4.0) { ((move(l4.0) == \"APPLICATION_ERROR\") ?: false) }, false) && traverseF(s4, lambda(l5.0) { ((move(l5.0) < Date(1767225600000)) ?: false) }, false) && traverseF(s4, lambda(l6.0) { ((move(l6.0) >= Date(1735689600000)) ?: false) }, false)) ",
+                                    "inputStage": {
+                                      "stage": "scan",
+                                      "planNodeId": 1,
+                                      "nReturned": 300000,
+                                      "executionTimeMillisEstimate": 150,
+                                      "opens": 1,
+                                      "closes": 1,
+                                      "saveState": 18,
+                                      "restoreState": 17,
+                                      "isEOF": 1,
+                                      "numReads": 300000,
+                                      "recordSlot": 1,
+                                      "recordIdSlot": 2,
+                                      "scanFieldNames": [
+                                        "payload",
+                                        "timestamp",
+                                        "type"
+                                      ],
+                                      "scanFieldSlots": [
+                                        3,
+                                        4,
+                                        5
+                                      ]
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "nReturned": 364,
+            "executionTimeMillisEstimate": 212
+          },
+          {
+            "$sort": {
+              "sortKey": {
+                "_id": 1
+              }
+            },
+            "totalDataSizeSortedBytesEstimate": 599644,
+            "usedDisk": false,
+            "spills": 0,
+            "spilledBytes": 0,
+            "spilledRecords": 0,
+            "spilledDataStorageSize": 0,
+            "nReturned": 364,
+            "executionTimeMillisEstimate": 212,
+            "peakTrackedMemBytes": 599644
+          },
+          {
+            "$project": {
+              "total": true,
+              "day": "$_id",
+              "byType": {
+                "$sortArray": {
+                  "input": "$byType",
+                  "sortBy": {
+                    "count": -1,
+                    "errorType": 1
+                  }
+                }
+              },
+              "_id": false
+            },
+            "nReturned": 364,
+            "executionTimeMillisEstimate": 214
+          }
+        ],
+        "queryShapeHash": "D623CDFDBAC2F346559EA1E866D1669AE9B3389BEE971ECFE717146A4A724BF2",
+        "peakTrackedMemBytes": 337098,
+        "serverInfo": {
+          "host": "King_Gomis15",
+          "port": 27017,
+          "version": "8.3.11",
+          "gitVersion": "b8b83d6e6e1aed495578ad8c6f9234ad329c9955"
+        },
+        "serverParameters": {
+          "internalQueryFacetBufferSizeBytes": 104857600,
+          "internalDocumentSourceGroupMaxMemoryBytes": 104857600,
+          "internalQueryMaxBlockingSortMemoryUsageBytes": 104857600,
+          "internalDocumentSourceSetWindowFieldsMaxMemoryBytes": 104857600,
+          "internalQueryFacetMaxOutputDocSizeBytes": 104857600,
+          "internalLookupStageIntermediateDocumentMaxSizeBytes": 104857600,
+          "internalQueryProhibitBlockingMergeOnMongoS": 0,
+          "internalQueryMaxAddToSetBytes": 104857600,
+          "internalQueryFrameworkControl": "trySbeRestricted",
+          "internalQueryPlannerIgnoreIndexWithCollationForRegex": 1
+        },
+        "command": {
+          "aggregate": "events",
+          "pipeline": [
+            {
+              "$match": {
+                "type": "APPLICATION_ERROR",
+                "timestamp": {
+                  "$gte": {
+                    "$date": "2025-01-01T00:00:00Z"
+                  },
+                  "$lt": {
+                    "$date": "2026-01-01T00:00:00Z"
+                  }
+                }
+              }
+            },
+            {
+              "$group": {
+                "_id": {
+                  "day": {
+                    "$dateTrunc": {
+                      "date": "$timestamp",
+                      "unit": "day",
+                      "timezone": "Europe/Paris"
+                    }
+                  },
+                  "errorType": "$payload.errorType"
+                },
+                "count": {
+                  "$sum": 1
+                }
+              }
+            },
+            {
+              "$group": {
+                "_id": "$_id.day",
+                "total": {
+                  "$sum": "$count"
+                },
+                "byType": {
+                  "$push": {
+                    "errorType": "$_id.errorType",
+                    "count": "$count"
+                  }
+                }
+              }
+            },
+            {
+              "$sort": {
+                "_id": 1
+              }
+            },
+            {
+              "$project": {
+                "_id": 0,
+                "day": "$_id",
+                "total": 1,
+                "byType": {
+                  "$sortArray": {
+                    "input": "$byType",
+                    "sortBy": {
+                      "count": -1,
+                      "errorType": 1
+                    }
+                  }
+                }
+              }
+            }
+          ],
+          "cursor": {},
+          "allowDiskUse": true,
+          "$db": "blackbox"
+        },
+        "ok": 1.0
+      }
+    },
+    {
+      "name": "errors, March",
+      "pipeline": [
+        {
+          "$match": {
+            "type": "APPLICATION_ERROR",
+            "timestamp": {
+              "$gte": {
+                "$date": "2025-03-01T00:00:00Z"
+              },
+              "$lt": {
+                "$date": "2025-04-01T00:00:00Z"
+              }
+            }
+          }
+        },
+        {
+          "$group": {
+            "_id": {
+              "day": {
+                "$dateTrunc": {
+                  "date": "$timestamp",
+                  "unit": "day",
+                  "timezone": "Europe/Paris"
+                }
+              },
+              "errorType": "$payload.errorType"
+            },
+            "count": {
+              "$sum": 1
+            }
+          }
+        },
+        {
+          "$group": {
+            "_id": "$_id.day",
+            "total": {
+              "$sum": "$count"
+            },
+            "byType": {
+              "$push": {
+                "errorType": "$_id.errorType",
+                "count": "$count"
+              }
+            }
+          }
+        },
+        {
+          "$sort": {
+            "_id": 1
+          }
+        },
+        {
+          "$project": {
+            "_id": 0,
+            "day": "$_id",
+            "total": 1,
+            "byType": {
+              "$sortArray": {
+                "input": "$byType",
+                "sortBy": {
+                  "count": -1,
+                  "errorType": 1
+                }
+              }
+            }
+          }
+        }
+      ],
+      "plan": "COLLSCAN -> GROUP -> GROUP, then $sort, $project",
+      "totalDocsExamined": 300000,
+      "totalKeysExamined": 0,
+      "matchedDocuments": 685,
+      "returnedDocuments": 31,
+      "explainExecutionTimeMillisMedian": 170,
+      "pipelineMillisMedian": 166,
+      "explain": {
+        "explainVersion": "2",
+        "stages": [
+          {
+            "$cursor": {
+              "queryPlanner": {
+                "namespace": "blackbox.events",
+                "parsedQuery": {
+                  "$and": [
+                    {
+                      "type": {
+                        "$eq": "APPLICATION_ERROR"
+                      }
+                    },
+                    {
+                      "timestamp": {
+                        "$lt": {
+                          "$date": "2025-04-01T00:00:00Z"
+                        }
+                      }
+                    },
+                    {
+                      "timestamp": {
+                        "$gte": {
+                          "$date": "2025-03-01T00:00:00Z"
+                        }
+                      }
+                    }
+                  ]
+                },
+                "indexFilterSet": false,
+                "queryHash": "CC0A3948",
+                "planCacheShapeHash": "CC0A3948",
+                "planCacheKey": "C958913A",
+                "optimizationTimeMillis": 0,
+                "cursorType": "regular",
+                "maxIndexedOrSolutionsReached": false,
+                "maxIndexedAndSolutionsReached": false,
+                "maxScansToExplodeReached": false,
+                "prunedSimilarIndexes": false,
+                "winningPlan": {
+                  "isCached": false,
+                  "queryPlan": {
+                    "stage": "GROUP",
+                    "planNodeId": 4,
+                    "inputStage": {
+                      "stage": "GROUP",
+                      "planNodeId": 3,
+                      "inputStage": {
+                        "stage": "COLLSCAN",
+                        "planNodeId": 1,
+                        "filter": {
+                          "$and": [
+                            {
+                              "type": {
+                                "$eq": "APPLICATION_ERROR"
+                              }
+                            },
+                            {
+                              "timestamp": {
+                                "$lt": {
+                                  "$date": "2025-04-01T00:00:00Z"
+                                }
+                              }
+                            },
+                            {
+                              "timestamp": {
+                                "$gte": {
+                                  "$date": "2025-03-01T00:00:00Z"
+                                }
+                              }
+                            }
+                          ]
+                        },
+                        "nss": "blackbox.events",
+                        "direction": "forward"
+                      }
+                    }
+                  },
+                  "slotBasedPlan": {
+                    "slots": "$$RESULT=s20 env: { s7 = TimeZoneDatabase(America/Lower_Princes...Europe/Monaco) (timeZoneDB) }",
+                    "stages": "[4] project [s20 = newObj(\"_id\", s18, \"total\", s19, \"byType\", s16)] \n[4] project [s19 = doubleDoubleSumFinalize(s15)] \n[4] group [s18] [s15 = aggDoubleDoubleSum(s8), s16 = _internalPush::accumulate(s16, newObj(\"errorType\", s13, \"count\", s8))] spillSlots[s14, s17] mergingExprs[aggMergeDoubleDoubleSums(s14), _internalPush::merge(s17)] \n[4] project [s18 = (s12 ?: null)] \n[4] extract_field_paths inputs[s8 = Get(count)/Id, s11 = Get(_id)/Id] outputs[s12 = Get(_id)/Traverse/Get(day)/Id, s13 = Get(_id)/Traverse/Get(errorType)/Id] \n[3] project [s11 = newObj(\"day\", s10, \"errorType\", s6)] \n[3] group [s10, s6] [s8 = _internalCount::accumulate(s8, 1)] spillSlots[s9] mergingExprs[_internalCount::merge(s9)] \n[3] project [s10 = \n    let [\n        l10.0 = dateTrunc(s7, s4, \"day\", 1ll, \"Europe/Paris\", \"sun\") \n    ] \n    in \n        if exists(l10.0) \n        then makeOwn(move(l10.0)) \n        else \n            if (typeMatch(s4, 1088) ?: true) \n            then null \n            elif typeMatch(s4, 131712) \n            then Nothing \n            else fail(7157932, \"$dateTrunc parameter 'date' must be coercible to date\") \n] \n[3] extract_field_paths inputs[s3 = Get(payload)/Id, s4 = Get(timestamp)/Id] outputs[s6 = Get(payload)/Traverse/Get(errorType)/Id] \n[1] filter {(traverseF(s5, lambda(l4.0) { ((move(l4.0) == \"APPLICATION_ERROR\") ?: false) }, false) && traverseF(s4, lambda(l5.0) { ((move(l5.0) < Date(1743465600000)) ?: false) }, false) && traverseF(s4, lambda(l6.0) { ((move(l6.0) >= Date(1740787200000)) ?: false) }, false))} \n[1] scan generic [s1 = record, s2 = recordId] [s3 = payload, s4 = timestamp, s5 = type] @\"fe5637cd-2e2f-4374-aad1-c21097fde912\" "
+                  }
+                },
+                "rejectedPlans": []
+              },
+              "executionStats": {
+                "executionSuccess": true,
+                "nReturned": 31,
+                "executionTimeMillis": 169,
+                "totalKeysExamined": 0,
+                "totalDocsExamined": 300000,
+                "executionStages": {
+                  "stage": "project",
+                  "planNodeId": 4,
+                  "nReturned": 31,
+                  "executionTimeMillisEstimate": 163,
+                  "opens": 1,
+                  "closes": 1,
+                  "saveState": 11,
+                  "restoreState": 10,
+                  "isEOF": 1,
+                  "projections": {
+                    "20": "newObj(\"_id\", s18, \"total\", s19, \"byType\", s16) "
+                  },
+                  "inputStage": {
+                    "stage": "project",
+                    "planNodeId": 4,
+                    "nReturned": 31,
+                    "executionTimeMillisEstimate": 163,
+                    "opens": 1,
+                    "closes": 1,
+                    "saveState": 11,
+                    "restoreState": 10,
+                    "isEOF": 1,
+                    "projections": {
+                      "19": "doubleDoubleSumFinalize(s15) "
+                    },
+                    "inputStage": {
+                      "stage": "group",
+                      "planNodeId": 4,
+                      "nReturned": 31,
+                      "executionTimeMillisEstimate": 163,
+                      "opens": 1,
+                      "closes": 1,
+                      "saveState": 11,
+                      "restoreState": 10,
+                      "isEOF": 1,
+                      "groupBySlots": [
+                        18
+                      ],
+                      "expressions": {
+                        "15": "aggDoubleDoubleSum(s8) ",
+                        "16": "_internalPush::accumulate(s16, newObj(\"errorType\", s13, \"count\", s8)) ",
+                        "initExprs": {
+                          "15": null,
+                          "16": null,
+                          "mergingExprs": {
+                            "14": "aggMergeDoubleDoubleSums(s14) ",
+                            "17": "_internalPush::merge(s17) "
+                          }
+                        }
+                      },
+                      "usedDisk": false,
+                      "spills": 0,
+                      "spilledBytes": 0,
+                      "spilledRecords": 0,
+                      "spilledDataStorageSize": 0,
+                      "peakTrackedMemBytes": 26412,
+                      "inputStage": {
+                        "stage": "project",
+                        "planNodeId": 4,
+                        "nReturned": 145,
+                        "executionTimeMillisEstimate": 163,
+                        "opens": 1,
+                        "closes": 1,
+                        "saveState": 11,
+                        "restoreState": 10,
+                        "isEOF": 1,
+                        "projections": {
+                          "18": "(s12 ?: null) "
+                        },
+                        "inputStage": {
+                          "stage": "extract_field_paths",
+                          "planNodeId": 4,
+                          "nReturned": 145,
+                          "executionTimeMillisEstimate": 163,
+                          "opens": 1,
+                          "closes": 1,
+                          "saveState": 11,
+                          "restoreState": 10,
+                          "isEOF": 1,
+                          "inputStage": {
+                            "stage": "project",
+                            "planNodeId": 3,
+                            "nReturned": 145,
+                            "executionTimeMillisEstimate": 163,
+                            "opens": 1,
+                            "closes": 1,
+                            "saveState": 11,
+                            "restoreState": 10,
+                            "isEOF": 1,
+                            "projections": {
+                              "11": "newObj(\"day\", s10, \"errorType\", s6) "
+                            },
+                            "inputStage": {
+                              "stage": "group",
+                              "planNodeId": 3,
+                              "nReturned": 145,
+                              "executionTimeMillisEstimate": 163,
+                              "opens": 1,
+                              "closes": 1,
+                              "saveState": 11,
+                              "restoreState": 10,
+                              "isEOF": 1,
+                              "groupBySlots": [
+                                10,
+                                6
+                              ],
+                              "expressions": {
+                                "8": "_internalCount::accumulate(s8, 1) ",
+                                "initExprs": {
+                                  "8": null,
+                                  "mergingExprs": {
+                                    "9": "_internalCount::merge(s9) "
+                                  }
+                                }
+                              },
+                              "usedDisk": false,
+                              "spills": 0,
+                              "spilledBytes": 0,
+                              "spilledRecords": 0,
+                              "spilledDataStorageSize": 0,
+                              "peakTrackedMemBytes": 9153,
+                              "inputStage": {
+                                "stage": "project",
+                                "planNodeId": 3,
+                                "nReturned": 685,
+                                "executionTimeMillisEstimate": 163,
+                                "opens": 1,
+                                "closes": 1,
+                                "saveState": 11,
+                                "restoreState": 10,
+                                "isEOF": 1,
+                                "projections": {
+                                  "10": "\n    let [\n        l10.0 = dateTrunc(s7, s4, \"day\", 1ll, \"Europe/Paris\", \"sun\") \n    ] \n    in \n        if exists(l10.0) \n        then makeOwn(move(l10.0)) \n        else \n            if (typeMatch(s4, 1088) ?: true) \n            then null \n            elif typeMatch(s4, 131712) \n            then Nothing \n            else fail(7157932, \"$dateTrunc parameter 'date' must be coercible to date\") \n"
+                                },
+                                "inputStage": {
+                                  "stage": "extract_field_paths",
+                                  "planNodeId": 3,
+                                  "nReturned": 685,
+                                  "executionTimeMillisEstimate": 163,
+                                  "opens": 1,
+                                  "closes": 1,
+                                  "saveState": 11,
+                                  "restoreState": 10,
+                                  "isEOF": 1,
+                                  "inputStage": {
+                                    "stage": "filter",
+                                    "planNodeId": 1,
+                                    "nReturned": 685,
+                                    "executionTimeMillisEstimate": 163,
+                                    "opens": 1,
+                                    "closes": 1,
+                                    "saveState": 11,
+                                    "restoreState": 10,
+                                    "isEOF": 1,
+                                    "numTested": 300000,
+                                    "filter": "(traverseF(s5, lambda(l4.0) { ((move(l4.0) == \"APPLICATION_ERROR\") ?: false) }, false) && traverseF(s4, lambda(l5.0) { ((move(l5.0) < Date(1743465600000)) ?: false) }, false) && traverseF(s4, lambda(l6.0) { ((move(l6.0) >= Date(1740787200000)) ?: false) }, false)) ",
+                                    "inputStage": {
+                                      "stage": "scan",
+                                      "planNodeId": 1,
+                                      "nReturned": 300000,
+                                      "executionTimeMillisEstimate": 88,
+                                      "opens": 1,
+                                      "closes": 1,
+                                      "saveState": 11,
+                                      "restoreState": 10,
+                                      "isEOF": 1,
+                                      "numReads": 300000,
+                                      "recordSlot": 1,
+                                      "recordIdSlot": 2,
+                                      "scanFieldNames": [
+                                        "payload",
+                                        "timestamp",
+                                        "type"
+                                      ],
+                                      "scanFieldSlots": [
+                                        3,
+                                        4,
+                                        5
+                                      ]
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "nReturned": 31,
+            "executionTimeMillisEstimate": 164
+          },
+          {
+            "$sort": {
+              "sortKey": {
+                "_id": 1
+              }
+            },
+            "totalDataSizeSortedBytesEstimate": 51479,
+            "usedDisk": false,
+            "spills": 0,
+            "spilledBytes": 0,
+            "spilledRecords": 0,
+            "spilledDataStorageSize": 0,
+            "nReturned": 31,
+            "executionTimeMillisEstimate": 164,
+            "peakTrackedMemBytes": 51479
+          },
+          {
+            "$project": {
+              "total": true,
+              "day": "$_id",
+              "byType": {
+                "$sortArray": {
+                  "input": "$byType",
+                  "sortBy": {
+                    "count": -1,
+                    "errorType": 1
+                  }
+                }
+              },
+              "_id": false
+            },
+            "nReturned": 31,
+            "executionTimeMillisEstimate": 164
+          }
+        ],
+        "queryShapeHash": "D623CDFDBAC2F346559EA1E866D1669AE9B3389BEE971ECFE717146A4A724BF2",
+        "peakTrackedMemBytes": 35565,
+        "serverInfo": {
+          "host": "King_Gomis15",
+          "port": 27017,
+          "version": "8.3.11",
+          "gitVersion": "b8b83d6e6e1aed495578ad8c6f9234ad329c9955"
+        },
+        "serverParameters": {
+          "internalQueryFacetBufferSizeBytes": 104857600,
+          "internalDocumentSourceGroupMaxMemoryBytes": 104857600,
+          "internalQueryMaxBlockingSortMemoryUsageBytes": 104857600,
+          "internalDocumentSourceSetWindowFieldsMaxMemoryBytes": 104857600,
+          "internalQueryFacetMaxOutputDocSizeBytes": 104857600,
+          "internalLookupStageIntermediateDocumentMaxSizeBytes": 104857600,
+          "internalQueryProhibitBlockingMergeOnMongoS": 0,
+          "internalQueryMaxAddToSetBytes": 104857600,
+          "internalQueryFrameworkControl": "trySbeRestricted",
+          "internalQueryPlannerIgnoreIndexWithCollationForRegex": 1
+        },
+        "command": {
+          "aggregate": "events",
+          "pipeline": [
+            {
+              "$match": {
+                "type": "APPLICATION_ERROR",
+                "timestamp": {
+                  "$gte": {
+                    "$date": "2025-03-01T00:00:00Z"
+                  },
+                  "$lt": {
+                    "$date": "2025-04-01T00:00:00Z"
+                  }
+                }
+              }
+            },
+            {
+              "$group": {
+                "_id": {
+                  "day": {
+                    "$dateTrunc": {
+                      "date": "$timestamp",
+                      "unit": "day",
+                      "timezone": "Europe/Paris"
+                    }
+                  },
+                  "errorType": "$payload.errorType"
+                },
+                "count": {
+                  "$sum": 1
+                }
+              }
+            },
+            {
+              "$group": {
+                "_id": "$_id.day",
+                "total": {
+                  "$sum": "$count"
+                },
+                "byType": {
+                  "$push": {
+                    "errorType": "$_id.errorType",
+                    "count": "$count"
+                  }
+                }
+              }
+            },
+            {
+              "$sort": {
+                "_id": 1
+              }
+            },
+            {
+              "$project": {
+                "_id": 0,
+                "day": "$_id",
+                "total": 1,
+                "byType": {
+                  "$sortArray": {
+                    "input": "$byType",
+                    "sortBy": {
+                      "count": -1,
+                      "errorType": 1
+                    }
+                  }
+                }
+              }
+            }
+          ],
+          "cursor": {},
+          "allowDiskUse": true,
+          "$db": "blackbox"
+        },
+        "ok": 1.0
+      }
+    },
+    {
+      "name": "response-times, year",
+      "pipeline": [
+        {
+          "$match": {
+            "type": "API_CALLED",
+            "timestamp": {
+              "$gte": {
+                "$date": "2025-01-01T00:00:00Z"
+              },
+              "$lt": {
+                "$date": "2026-01-01T00:00:00Z"
+              }
+            }
+          }
+        },
+        {
+          "$group": {
+            "_id": {
+              "method": "$payload.method",
+              "endpoint": "$payload.endpoint"
+            },
+            "calls": {
+              "$sum": 1
+            },
+            "averageMs": {
+              "$avg": "$payload.responseTimeMs"
+            },
+            "p95Ms": {
+              "$percentile": {
+                "input": "$payload.responseTimeMs",
+                "p": [
+                  0.95
+                ],
+                "method": "approximate"
+              }
+            }
+          }
+        },
+        {
+          "$project": {
+            "_id": 0,
+            "method": "$_id.method",
+            "endpoint": "$_id.endpoint",
+            "calls": 1,
+            "averageMs": {
+              "$round": [
+                "$averageMs",
+                1
+              ]
+            },
+            "p95Ms": {
+              "$round": [
+                {
+                  "$first": "$p95Ms"
+                },
+                1
+              ]
+            }
+          }
+        },
+        {
+          "$sort": {
+            "p95Ms": -1,
+            "endpoint": 1,
+            "method": 1
+          }
+        }
+      ],
+      "plan": "COLLSCAN -> PROJECTION_DEFAULT, then $group, $project, $sort",
+      "totalDocsExamined": 300000,
+      "totalKeysExamined": 0,
+      "matchedDocuments": 45710,
+      "returnedDocuments": 9,
+      "explainExecutionTimeMillisMedian": 346,
+      "pipelineMillisMedian": 287,
+      "explain": {
+        "explainVersion": "1",
+        "stages": [
+          {
+            "$cursor": {
+              "queryPlanner": {
+                "namespace": "blackbox.events",
+                "parsedQuery": {
+                  "$and": [
+                    {
+                      "type": {
+                        "$eq": "API_CALLED"
+                      }
+                    },
+                    {
+                      "timestamp": {
+                        "$lt": {
+                          "$date": "2026-01-01T00:00:00Z"
+                        }
+                      }
+                    },
+                    {
+                      "timestamp": {
+                        "$gte": {
+                          "$date": "2025-01-01T00:00:00Z"
+                        }
+                      }
+                    }
+                  ]
+                },
+                "indexFilterSet": false,
+                "queryHash": "AF5B5F56",
+                "planCacheShapeHash": "AF5B5F56",
+                "planCacheKey": "5AD6AFA7",
+                "optimizationTimeMillis": 0,
+                "cursorType": "regular",
+                "maxIndexedOrSolutionsReached": false,
+                "maxIndexedAndSolutionsReached": false,
+                "maxScansToExplodeReached": false,
+                "prunedSimilarIndexes": false,
+                "winningPlan": {
+                  "isCached": false,
+                  "stage": "PROJECTION_DEFAULT",
+                  "transformBy": {
+                    "payload.endpoint": 1,
+                    "payload.method": 1,
+                    "payload.responseTimeMs": 1,
+                    "_id": 0
+                  },
+                  "inputStage": {
+                    "stage": "COLLSCAN",
+                    "filter": {
+                      "$and": [
+                        {
+                          "type": {
+                            "$eq": "API_CALLED"
+                          }
+                        },
+                        {
+                          "timestamp": {
+                            "$lt": {
+                              "$date": "2026-01-01T00:00:00Z"
+                            }
+                          }
+                        },
+                        {
+                          "timestamp": {
+                            "$gte": {
+                              "$date": "2025-01-01T00:00:00Z"
+                            }
+                          }
+                        }
+                      ]
+                    },
+                    "nss": "blackbox.events",
+                    "direction": "forward"
+                  }
+                },
+                "rejectedPlans": []
+              },
+              "executionStats": {
+                "executionSuccess": true,
+                "nReturned": 45710,
+                "executionTimeMillis": 337,
+                "totalKeysExamined": 0,
+                "totalDocsExamined": 300000,
+                "executionStages": {
+                  "isCached": false,
+                  "stage": "PROJECTION_DEFAULT",
+                  "nReturned": 45710,
+                  "executionTimeMillisEstimate": 232,
+                  "works": 300001,
+                  "advanced": 45710,
+                  "needTime": 254290,
+                  "needYield": 0,
+                  "saveState": 27,
+                  "restoreState": 26,
+                  "isEOF": 1,
+                  "transformBy": {
+                    "payload.endpoint": 1,
+                    "payload.method": 1,
+                    "payload.responseTimeMs": 1,
+                    "_id": 0
+                  },
+                  "inputStage": {
+                    "stage": "COLLSCAN",
+                    "filter": {
+                      "$and": [
+                        {
+                          "type": {
+                            "$eq": "API_CALLED"
+                          }
+                        },
+                        {
+                          "timestamp": {
+                            "$lt": {
+                              "$date": "2026-01-01T00:00:00Z"
+                            }
+                          }
+                        },
+                        {
+                          "timestamp": {
+                            "$gte": {
+                              "$date": "2025-01-01T00:00:00Z"
+                            }
+                          }
+                        }
+                      ]
+                    },
+                    "nReturned": 45710,
+                    "executionTimeMillisEstimate": 146,
+                    "works": 300001,
+                    "advanced": 45710,
+                    "needTime": 254290,
+                    "needYield": 0,
+                    "saveState": 27,
+                    "restoreState": 26,
+                    "isEOF": 1,
+                    "nss": "blackbox.events",
+                    "direction": "forward",
+                    "docsExamined": 300000
+                  }
+                }
+              }
+            },
+            "nReturned": 45710,
+            "executionTimeMillisEstimate": 266
+          },
+          {
+            "$group": {
+              "_id": {
+                "method": "$payload.method",
+                "endpoint": "$payload.endpoint"
+              },
+              "calls": {
+                "$sum": {
+                  "$const": 1
+                }
+              },
+              "averageMs": {
+                "$avg": "$payload.responseTimeMs"
+              },
+              "p95Ms": {
+                "$percentile": {
+                  "input": "$payload.responseTimeMs",
+                  "p": [
+                    0.95
+                  ],
+                  "method": "approximate"
+                }
+              },
+              "$willBeMerged": false
+            },
+            "nReturned": 9,
+            "executionTimeMillisEstimate": 338,
+            "maxAccumulatorMemoryUsageBytes": {
+              "calls": 2016,
+              "averageMs": 1800,
+              "p95Ms": 450232
+            },
+            "totalOutputDataSizeBytes": 5805,
+            "usedDisk": false,
+            "spills": 0,
+            "spilledDataStorageSize": 0,
+            "spilledBytes": 0,
+            "spilledRecords": 0,
+            "peakTrackedMemBytes": 455299
+          },
+          {
+            "$project": {
+              "calls": true,
+              "method": "$_id.method",
+              "endpoint": "$_id.endpoint",
+              "averageMs": {
+                "$round": [
+                  "$averageMs",
+                  {
+                    "$const": 1
+                  }
+                ]
+              },
+              "p95Ms": {
+                "$round": [
+                  {
+                    "$first": [
+                      "$p95Ms"
+                    ]
+                  },
+                  {
+                    "$const": 1
+                  }
+                ]
+              },
+              "_id": false
+            },
+            "nReturned": 9,
+            "executionTimeMillisEstimate": 338
+          },
+          {
+            "$sort": {
+              "sortKey": {
+                "p95Ms": -1,
+                "endpoint": 1,
+                "method": 1
+              }
+            },
+            "totalDataSizeSortedBytesEstimate": 4779,
+            "usedDisk": false,
+            "spills": 0,
+            "spilledBytes": 0,
+            "spilledRecords": 0,
+            "spilledDataStorageSize": 0,
+            "nReturned": 9,
+            "executionTimeMillisEstimate": 338,
+            "peakTrackedMemBytes": 4779
+          }
+        ],
+        "queryShapeHash": "A00DE88CB7A89D55C0A98FE97808AEEC57BB466B861FA7A7D31B6F03A51323E3",
+        "serverInfo": {
+          "host": "King_Gomis15",
+          "port": 27017,
+          "version": "8.3.11",
+          "gitVersion": "b8b83d6e6e1aed495578ad8c6f9234ad329c9955"
+        },
+        "serverParameters": {
+          "internalQueryFacetBufferSizeBytes": 104857600,
+          "internalDocumentSourceGroupMaxMemoryBytes": 104857600,
+          "internalQueryMaxBlockingSortMemoryUsageBytes": 104857600,
+          "internalDocumentSourceSetWindowFieldsMaxMemoryBytes": 104857600,
+          "internalQueryFacetMaxOutputDocSizeBytes": 104857600,
+          "internalLookupStageIntermediateDocumentMaxSizeBytes": 104857600,
+          "internalQueryProhibitBlockingMergeOnMongoS": 0,
+          "internalQueryMaxAddToSetBytes": 104857600,
+          "internalQueryFrameworkControl": "trySbeRestricted",
+          "internalQueryPlannerIgnoreIndexWithCollationForRegex": 1
+        },
+        "command": {
+          "aggregate": "events",
+          "pipeline": [
+            {
+              "$match": {
+                "type": "API_CALLED",
+                "timestamp": {
+                  "$gte": {
+                    "$date": "2025-01-01T00:00:00Z"
+                  },
+                  "$lt": {
+                    "$date": "2026-01-01T00:00:00Z"
+                  }
+                }
+              }
+            },
+            {
+              "$group": {
+                "_id": {
+                  "method": "$payload.method",
+                  "endpoint": "$payload.endpoint"
+                },
+                "calls": {
+                  "$sum": 1
+                },
+                "averageMs": {
+                  "$avg": "$payload.responseTimeMs"
+                },
+                "p95Ms": {
+                  "$percentile": {
+                    "input": "$payload.responseTimeMs",
+                    "p": [
+                      0.95
+                    ],
+                    "method": "approximate"
+                  }
+                }
+              }
+            },
+            {
+              "$project": {
+                "_id": 0,
+                "method": "$_id.method",
+                "endpoint": "$_id.endpoint",
+                "calls": 1,
+                "averageMs": {
+                  "$round": [
+                    "$averageMs",
+                    1
+                  ]
+                },
+                "p95Ms": {
+                  "$round": [
+                    {
+                      "$first": "$p95Ms"
+                    },
+                    1
+                  ]
+                }
+              }
+            },
+            {
+              "$sort": {
+                "p95Ms": -1,
+                "endpoint": 1,
+                "method": 1
+              }
+            }
+          ],
+          "cursor": {},
+          "allowDiskUse": true,
+          "$db": "blackbox"
+        },
+        "ok": 1.0
+      }
+    },
+    {
+      "name": "response-times, March",
+      "pipeline": [
+        {
+          "$match": {
+            "type": "API_CALLED",
+            "timestamp": {
+              "$gte": {
+                "$date": "2025-03-01T00:00:00Z"
+              },
+              "$lt": {
+                "$date": "2025-04-01T00:00:00Z"
+              }
+            }
+          }
+        },
+        {
+          "$group": {
+            "_id": {
+              "method": "$payload.method",
+              "endpoint": "$payload.endpoint"
+            },
+            "calls": {
+              "$sum": 1
+            },
+            "averageMs": {
+              "$avg": "$payload.responseTimeMs"
+            },
+            "p95Ms": {
+              "$percentile": {
+                "input": "$payload.responseTimeMs",
+                "p": [
+                  0.95
+                ],
+                "method": "approximate"
+              }
+            }
+          }
+        },
+        {
+          "$project": {
+            "_id": 0,
+            "method": "$_id.method",
+            "endpoint": "$_id.endpoint",
+            "calls": 1,
+            "averageMs": {
+              "$round": [
+                "$averageMs",
+                1
+              ]
+            },
+            "p95Ms": {
+              "$round": [
+                {
+                  "$first": "$p95Ms"
+                },
+                1
+              ]
+            }
+          }
+        },
+        {
+          "$sort": {
+            "p95Ms": -1,
+            "endpoint": 1,
+            "method": 1
+          }
+        }
+      ],
+      "plan": "COLLSCAN -> PROJECTION_DEFAULT, then $group, $project, $sort",
+      "totalDocsExamined": 300000,
+      "totalKeysExamined": 0,
+      "matchedDocuments": 4121,
+      "returnedDocuments": 9,
+      "explainExecutionTimeMillisMedian": 223,
+      "pipelineMillisMedian": 172,
+      "explain": {
+        "explainVersion": "1",
+        "stages": [
+          {
+            "$cursor": {
+              "queryPlanner": {
+                "namespace": "blackbox.events",
+                "parsedQuery": {
+                  "$and": [
+                    {
+                      "type": {
+                        "$eq": "API_CALLED"
+                      }
+                    },
+                    {
+                      "timestamp": {
+                        "$lt": {
+                          "$date": "2025-04-01T00:00:00Z"
+                        }
+                      }
+                    },
+                    {
+                      "timestamp": {
+                        "$gte": {
+                          "$date": "2025-03-01T00:00:00Z"
+                        }
+                      }
+                    }
+                  ]
+                },
+                "indexFilterSet": false,
+                "queryHash": "AF5B5F56",
+                "planCacheShapeHash": "AF5B5F56",
+                "planCacheKey": "5AD6AFA7",
+                "optimizationTimeMillis": 0,
+                "cursorType": "regular",
+                "maxIndexedOrSolutionsReached": false,
+                "maxIndexedAndSolutionsReached": false,
+                "maxScansToExplodeReached": false,
+                "prunedSimilarIndexes": false,
+                "winningPlan": {
+                  "isCached": false,
+                  "stage": "PROJECTION_DEFAULT",
+                  "transformBy": {
+                    "payload.endpoint": 1,
+                    "payload.method": 1,
+                    "payload.responseTimeMs": 1,
+                    "_id": 0
+                  },
+                  "inputStage": {
+                    "stage": "COLLSCAN",
+                    "filter": {
+                      "$and": [
+                        {
+                          "type": {
+                            "$eq": "API_CALLED"
+                          }
+                        },
+                        {
+                          "timestamp": {
+                            "$lt": {
+                              "$date": "2025-04-01T00:00:00Z"
+                            }
+                          }
+                        },
+                        {
+                          "timestamp": {
+                            "$gte": {
+                              "$date": "2025-03-01T00:00:00Z"
+                            }
+                          }
+                        }
+                      ]
+                    },
+                    "nss": "blackbox.events",
+                    "direction": "forward"
+                  }
+                },
+                "rejectedPlans": []
+              },
+              "executionStats": {
+                "executionSuccess": true,
+                "nReturned": 4121,
+                "executionTimeMillis": 223,
+                "totalKeysExamined": 0,
+                "totalDocsExamined": 300000,
+                "executionStages": {
+                  "isCached": false,
+                  "stage": "PROJECTION_DEFAULT",
+                  "nReturned": 4121,
+                  "executionTimeMillisEstimate": 166,
+                  "works": 300001,
+                  "advanced": 4121,
+                  "needTime": 295879,
+                  "needYield": 0,
+                  "saveState": 21,
+                  "restoreState": 20,
+                  "isEOF": 1,
+                  "transformBy": {
+                    "payload.endpoint": 1,
+                    "payload.method": 1,
+                    "payload.responseTimeMs": 1,
+                    "_id": 0
+                  },
+                  "inputStage": {
+                    "stage": "COLLSCAN",
+                    "filter": {
+                      "$and": [
+                        {
+                          "type": {
+                            "$eq": "API_CALLED"
+                          }
+                        },
+                        {
+                          "timestamp": {
+                            "$lt": {
+                              "$date": "2025-04-01T00:00:00Z"
+                            }
+                          }
+                        },
+                        {
+                          "timestamp": {
+                            "$gte": {
+                              "$date": "2025-03-01T00:00:00Z"
+                            }
+                          }
+                        }
+                      ]
+                    },
+                    "nReturned": 4121,
+                    "executionTimeMillisEstimate": 150,
+                    "works": 300001,
+                    "advanced": 4121,
+                    "needTime": 295879,
+                    "needYield": 0,
+                    "saveState": 21,
+                    "restoreState": 20,
+                    "isEOF": 1,
+                    "nss": "blackbox.events",
+                    "direction": "forward",
+                    "docsExamined": 300000
+                  }
+                }
+              }
+            },
+            "nReturned": 4121,
+            "executionTimeMillisEstimate": 199
+          },
+          {
+            "$group": {
+              "_id": {
+                "method": "$payload.method",
+                "endpoint": "$payload.endpoint"
+              },
+              "calls": {
+                "$sum": {
+                  "$const": 1
+                }
+              },
+              "averageMs": {
+                "$avg": "$payload.responseTimeMs"
+              },
+              "p95Ms": {
+                "$percentile": {
+                  "input": "$payload.responseTimeMs",
+                  "p": [
+                    0.95
+                  ],
+                  "method": "approximate"
+                }
+              },
+              "$willBeMerged": false
+            },
+            "nReturned": 9,
+            "executionTimeMillisEstimate": 217,
+            "maxAccumulatorMemoryUsageBytes": {
+              "calls": 2016,
+              "averageMs": 1800,
+              "p95Ms": 42632
+            },
+            "totalOutputDataSizeBytes": 5805,
+            "usedDisk": false,
+            "spills": 0,
+            "spilledDataStorageSize": 0,
+            "spilledBytes": 0,
+            "spilledRecords": 0,
+            "peakTrackedMemBytes": 47699
+          },
+          {
+            "$project": {
+              "calls": true,
+              "method": "$_id.method",
+              "endpoint": "$_id.endpoint",
+              "averageMs": {
+                "$round": [
+                  "$averageMs",
+                  {
+                    "$const": 1
+                  }
+                ]
+              },
+              "p95Ms": {
+                "$round": [
+                  {
+                    "$first": [
+                      "$p95Ms"
+                    ]
+                  },
+                  {
+                    "$const": 1
+                  }
+                ]
+              },
+              "_id": false
+            },
+            "nReturned": 9,
+            "executionTimeMillisEstimate": 217
+          },
+          {
+            "$sort": {
+              "sortKey": {
+                "p95Ms": -1,
+                "endpoint": 1,
+                "method": 1
+              }
+            },
+            "totalDataSizeSortedBytesEstimate": 4779,
+            "usedDisk": false,
+            "spills": 0,
+            "spilledBytes": 0,
+            "spilledRecords": 0,
+            "spilledDataStorageSize": 0,
+            "nReturned": 9,
+            "executionTimeMillisEstimate": 217,
+            "peakTrackedMemBytes": 4779
+          }
+        ],
+        "queryShapeHash": "A00DE88CB7A89D55C0A98FE97808AEEC57BB466B861FA7A7D31B6F03A51323E3",
+        "serverInfo": {
+          "host": "King_Gomis15",
+          "port": 27017,
+          "version": "8.3.11",
+          "gitVersion": "b8b83d6e6e1aed495578ad8c6f9234ad329c9955"
+        },
+        "serverParameters": {
+          "internalQueryFacetBufferSizeBytes": 104857600,
+          "internalDocumentSourceGroupMaxMemoryBytes": 104857600,
+          "internalQueryMaxBlockingSortMemoryUsageBytes": 104857600,
+          "internalDocumentSourceSetWindowFieldsMaxMemoryBytes": 104857600,
+          "internalQueryFacetMaxOutputDocSizeBytes": 104857600,
+          "internalLookupStageIntermediateDocumentMaxSizeBytes": 104857600,
+          "internalQueryProhibitBlockingMergeOnMongoS": 0,
+          "internalQueryMaxAddToSetBytes": 104857600,
+          "internalQueryFrameworkControl": "trySbeRestricted",
+          "internalQueryPlannerIgnoreIndexWithCollationForRegex": 1
+        },
+        "command": {
+          "aggregate": "events",
+          "pipeline": [
+            {
+              "$match": {
+                "type": "API_CALLED",
+                "timestamp": {
+                  "$gte": {
+                    "$date": "2025-03-01T00:00:00Z"
+                  },
+                  "$lt": {
+                    "$date": "2025-04-01T00:00:00Z"
+                  }
+                }
+              }
+            },
+            {
+              "$group": {
+                "_id": {
+                  "method": "$payload.method",
+                  "endpoint": "$payload.endpoint"
+                },
+                "calls": {
+                  "$sum": 1
+                },
+                "averageMs": {
+                  "$avg": "$payload.responseTimeMs"
+                },
+                "p95Ms": {
+                  "$percentile": {
+                    "input": "$payload.responseTimeMs",
+                    "p": [
+                      0.95
+                    ],
+                    "method": "approximate"
+                  }
+                }
+              }
+            },
+            {
+              "$project": {
+                "_id": 0,
+                "method": "$_id.method",
+                "endpoint": "$_id.endpoint",
+                "calls": 1,
+                "averageMs": {
+                  "$round": [
+                    "$averageMs",
+                    1
+                  ]
+                },
+                "p95Ms": {
+                  "$round": [
+                    {
+                      "$first": "$p95Ms"
+                    },
+                    1
+                  ]
+                }
+              }
+            },
+            {
+              "$sort": {
+                "p95Ms": -1,
+                "endpoint": 1,
+                "method": 1
+              }
+            }
+          ],
+          "cursor": {},
+          "allowDiskUse": true,
+          "$db": "blackbox"
+        },
+        "ok": 1.0
+      }
+    },
+    {
+      "name": "funnel, year",
+      "pipeline": [
+        {
+          "$match": {
+            "type": {
+              "$in": [
+                "USER_SIGNED_UP",
+                "MESSAGE_SENT",
+                "SUBSCRIPTION_PAID"
+              ]
+            },
+            "timestamp": {
+              "$gte": {
+                "$date": "2025-01-01T00:00:00Z"
+              },
+              "$lt": {
+                "$date": "2026-01-01T00:00:00Z"
+              }
+            }
+          }
+        },
+        {
+          "$group": {
+            "_id": {
+              "userId": "$userId",
+              "type": "$type"
+            },
+            "firstAt": {
+              "$min": "$timestamp"
+            }
+          }
+        },
+        {
+          "$sort": {
+            "_id.userId": 1,
+            "firstAt": 1
+          }
+        },
+        {
+          "$group": {
+            "_id": "$_id.userId",
+            "sequence": {
+              "$push": "$_id.type"
+            }
+          }
+        },
+        {
+          "$project": {
+            "reached": {
+              "$reduce": {
+                "input": "$sequence",
+                "initialValue": 0,
+                "in": {
+                  "$cond": [
+                    {
+                      "$eq": [
+                        "$$this",
+                        {
+                          "$arrayElemAt": [
+                            [
+                              "USER_SIGNED_UP",
+                              "MESSAGE_SENT",
+                              "SUBSCRIPTION_PAID"
+                            ],
+                            "$$value"
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "$add": [
+                        "$$value",
+                        1
+                      ]
+                    },
+                    "$$value"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        {
+          "$group": {
+            "_id": "$reached",
+            "users": {
+              "$sum": 1
+            }
+          }
+        }
+      ],
+      "plan": "COLLSCAN -> GROUP, then $sort, $group, $project, $group",
+      "totalDocsExamined": 300000,
+      "totalKeysExamined": 0,
+      "matchedDocuments": 157295,
+      "returnedDocuments": 3,
+      "explainExecutionTimeMillisMedian": 359,
+      "pipelineMillisMedian": 288,
+      "explain": {
+        "explainVersion": "2",
+        "stages": [
+          {
+            "$cursor": {
+              "queryPlanner": {
+                "namespace": "blackbox.events",
+                "parsedQuery": {
+                  "$and": [
+                    {
+                      "timestamp": {
+                        "$lt": {
+                          "$date": "2026-01-01T00:00:00Z"
+                        }
+                      }
+                    },
+                    {
+                      "timestamp": {
+                        "$gte": {
+                          "$date": "2025-01-01T00:00:00Z"
+                        }
+                      }
+                    },
+                    {
+                      "type": {
+                        "$in": [
+                          "MESSAGE_SENT",
+                          "SUBSCRIPTION_PAID",
+                          "USER_SIGNED_UP"
+                        ]
+                      }
+                    }
+                  ]
+                },
+                "indexFilterSet": false,
+                "queryHash": "371FA2D3",
+                "planCacheShapeHash": "371FA2D3",
+                "planCacheKey": "2C9CB436",
+                "optimizationTimeMillis": 0,
+                "cursorType": "regular",
+                "maxIndexedOrSolutionsReached": false,
+                "maxIndexedAndSolutionsReached": false,
+                "maxScansToExplodeReached": false,
+                "prunedSimilarIndexes": false,
+                "winningPlan": {
+                  "isCached": false,
+                  "queryPlan": {
+                    "stage": "GROUP",
+                    "planNodeId": 3,
+                    "inputStage": {
+                      "stage": "COLLSCAN",
+                      "planNodeId": 1,
+                      "filter": {
+                        "$and": [
+                          {
+                            "timestamp": {
+                              "$lt": {
+                                "$date": "2026-01-01T00:00:00Z"
+                              }
+                            }
+                          },
+                          {
+                            "timestamp": {
+                              "$gte": {
+                                "$date": "2025-01-01T00:00:00Z"
+                              }
+                            }
+                          },
+                          {
+                            "type": {
+                              "$in": [
+                                "MESSAGE_SENT",
+                                "SUBSCRIPTION_PAID",
+                                "USER_SIGNED_UP"
+                              ]
+                            }
+                          }
+                        ]
+                      },
+                      "nss": "blackbox.events",
+                      "direction": "forward"
+                    }
+                  },
+                  "slotBasedPlan": {
+                    "slots": "$$RESULT=s11 env: { s6 = InList(\"USER_SIGNED_UP\" \"MESSAGE_SENT\" \"SUBSCRIPTION_PAID\") }",
+                    "stages": "[3] project [s11 = newObj(\"_id\", s9, \"firstAt\", s10)] \n[3] project [s9 = newObj(\"userId\", s5, \"type\", s4), s10 = (s8 ?: null)] \n[3] group [s5, s4] [s8 = min(fillType(s3, 1088, Nothing))] spillSlots[s7] mergingExprs[min(fillType(s7, 1088, Nothing))] \n[1] filter {(traverseF(s3, lambda(l4.0) { ((move(l4.0) < Date(1767225600000)) ?: false) }, false) && traverseF(s3, lambda(l5.0) { ((move(l5.0) >= Date(1735689600000)) ?: false) }, false) && traverseF(s4, lambda(l6.0) { isMember(move(l6.0), s6) }, false))} \n[1] scan generic [s1 = record, s2 = recordId] [s3 = timestamp, s4 = type, s5 = userId] @\"fe5637cd-2e2f-4374-aad1-c21097fde912\" "
+                  }
+                },
+                "rejectedPlans": []
+              },
+              "executionStats": {
+                "executionSuccess": true,
+                "nReturned": 5637,
+                "executionTimeMillis": 420,
+                "totalKeysExamined": 0,
+                "totalDocsExamined": 300000,
+                "executionStages": {
+                  "stage": "project",
+                  "planNodeId": 3,
+                  "nReturned": 5637,
+                  "executionTimeMillisEstimate": 366,
+                  "opens": 1,
+                  "closes": 1,
+                  "saveState": 29,
+                  "restoreState": 28,
+                  "isEOF": 1,
+                  "projections": {
+                    "11": "newObj(\"_id\", s9, \"firstAt\", s10) "
+                  },
+                  "inputStage": {
+                    "stage": "project",
+                    "planNodeId": 3,
+                    "nReturned": 5637,
+                    "executionTimeMillisEstimate": 366,
+                    "opens": 1,
+                    "closes": 1,
+                    "saveState": 29,
+                    "restoreState": 28,
+                    "isEOF": 1,
+                    "projections": {
+                      "9": "newObj(\"userId\", s5, \"type\", s4) ",
+                      "10": "(s8 ?: null) "
+                    },
+                    "inputStage": {
+                      "stage": "group",
+                      "planNodeId": 3,
+                      "nReturned": 5637,
+                      "executionTimeMillisEstimate": 361,
+                      "opens": 1,
+                      "closes": 1,
+                      "saveState": 29,
+                      "restoreState": 28,
+                      "isEOF": 1,
+                      "groupBySlots": [
+                        5,
+                        4
+                      ],
+                      "expressions": {
+                        "8": "min(fillType(s3, 1088, Nothing)) ",
+                        "initExprs": {
+                          "8": null,
+                          "mergingExprs": {
+                            "7": "min(fillType(s7, 1088, Nothing)) "
+                          }
+                        }
+                      },
+                      "usedDisk": false,
+                      "spills": 0,
+                      "spilledBytes": 0,
+                      "spilledRecords": 0,
+                      "spilledDataStorageSize": 0,
+                      "peakTrackedMemBytes": 512967,
+                      "inputStage": {
+                        "stage": "filter",
+                        "planNodeId": 1,
+                        "nReturned": 157295,
+                        "executionTimeMillisEstimate": 256,
+                        "opens": 1,
+                        "closes": 1,
+                        "saveState": 29,
+                        "restoreState": 28,
+                        "isEOF": 1,
+                        "numTested": 300000,
+                        "filter": "(traverseF(s3, lambda(l4.0) { ((move(l4.0) < Date(1767225600000)) ?: false) }, false) && traverseF(s3, lambda(l5.0) { ((move(l5.0) >= Date(1735689600000)) ?: false) }, false) && traverseF(s4, lambda(l6.0) { isMember(move(l6.0), s6) }, false)) ",
+                        "inputStage": {
+                          "stage": "scan",
+                          "planNodeId": 1,
+                          "nReturned": 300000,
+                          "executionTimeMillisEstimate": 166,
+                          "opens": 1,
+                          "closes": 1,
+                          "saveState": 29,
+                          "restoreState": 28,
+                          "isEOF": 1,
+                          "numReads": 300000,
+                          "recordSlot": 1,
+                          "recordIdSlot": 2,
+                          "scanFieldNames": [
+                            "timestamp",
+                            "type",
+                            "userId"
+                          ],
+                          "scanFieldSlots": [
+                            3,
+                            4,
+                            5
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "nReturned": 5637,
+            "executionTimeMillisEstimate": 394
+          },
+          {
+            "$sort": {
+              "sortKey": {
+                "_id.userId": 1,
+                "firstAt": 1
+              }
+            },
+            "totalDataSizeSortedBytesEstimate": 3257767,
+            "usedDisk": false,
+            "spills": 0,
+            "spilledBytes": 0,
+            "spilledRecords": 0,
+            "spilledDataStorageSize": 0,
+            "nReturned": 5637,
+            "executionTimeMillisEstimate": 395,
+            "peakTrackedMemBytes": 3257767
+          },
+          {
+            "$group": {
+              "_id": "$_id.userId",
+              "sequence": {
+                "$push": "$_id.type"
+              },
+              "$willBeMerged": false
+            },
+            "nReturned": 3000,
+            "executionTimeMillisEstimate": 414,
+            "maxAccumulatorMemoryUsageBytes": {
+              "sequence": 729061
+            },
+            "totalOutputDataSizeBytes": 1056061,
+            "usedDisk": false,
+            "spills": 0,
+            "spilledDataStorageSize": 0,
+            "spilledBytes": 0,
+            "spilledRecords": 0,
+            "peakTrackedMemBytes": 777061
+          },
+          {
+            "$project": {
+              "_id": true,
+              "reached": {
+                "$reduce": {
+                  "input": "$sequence",
+                  "initialValue": {
+                    "$const": 0
+                  },
+                  "in": {
+                    "$cond": [
+                      {
+                        "$eq": [
+                          "$$this",
+                          {
+                            "$arrayElemAt": [
+                              {
+                                "$const": [
+                                  "USER_SIGNED_UP",
+                                  "MESSAGE_SENT",
+                                  "SUBSCRIPTION_PAID"
+                                ]
+                              },
+                              "$$value"
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "$add": [
+                          "$$value",
+                          {
+                            "$const": 1
+                          }
+                        ]
+                      },
+                      "$$value"
+                    ]
+                  }
+                }
+              }
+            },
+            "nReturned": 3000,
+            "executionTimeMillisEstimate": 414
+          },
+          {
+            "$group": {
+              "_id": "$reached",
+              "users": {
+                "$sum": {
+                  "$const": 1
+                }
+              },
+              "$willBeMerged": false
+            },
+            "nReturned": 3,
+            "executionTimeMillisEstimate": 414,
+            "maxAccumulatorMemoryUsageBytes": {
+              "users": 672
+            },
+            "totalOutputDataSizeBytes": 711,
+            "usedDisk": false,
+            "spills": 0,
+            "spilledDataStorageSize": 0,
+            "spilledBytes": 0,
+            "spilledRecords": 0,
+            "peakTrackedMemBytes": 720
+          }
+        ],
+        "queryShapeHash": "4056ABBE88C67C3B24DDADB88680FA910A97681C60544FBE9ADB78A02F9E4681",
+        "peakTrackedMemBytes": 3145728,
+        "serverInfo": {
+          "host": "King_Gomis15",
+          "port": 27017,
+          "version": "8.3.11",
+          "gitVersion": "b8b83d6e6e1aed495578ad8c6f9234ad329c9955"
+        },
+        "serverParameters": {
+          "internalQueryFacetBufferSizeBytes": 104857600,
+          "internalDocumentSourceGroupMaxMemoryBytes": 104857600,
+          "internalQueryMaxBlockingSortMemoryUsageBytes": 104857600,
+          "internalDocumentSourceSetWindowFieldsMaxMemoryBytes": 104857600,
+          "internalQueryFacetMaxOutputDocSizeBytes": 104857600,
+          "internalLookupStageIntermediateDocumentMaxSizeBytes": 104857600,
+          "internalQueryProhibitBlockingMergeOnMongoS": 0,
+          "internalQueryMaxAddToSetBytes": 104857600,
+          "internalQueryFrameworkControl": "trySbeRestricted",
+          "internalQueryPlannerIgnoreIndexWithCollationForRegex": 1
+        },
+        "command": {
+          "aggregate": "events",
+          "pipeline": [
+            {
+              "$match": {
+                "type": {
+                  "$in": [
+                    "USER_SIGNED_UP",
+                    "MESSAGE_SENT",
+                    "SUBSCRIPTION_PAID"
+                  ]
+                },
+                "timestamp": {
+                  "$gte": {
+                    "$date": "2025-01-01T00:00:00Z"
+                  },
+                  "$lt": {
+                    "$date": "2026-01-01T00:00:00Z"
+                  }
+                }
+              }
+            },
+            {
+              "$group": {
+                "_id": {
+                  "userId": "$userId",
+                  "type": "$type"
+                },
+                "firstAt": {
+                  "$min": "$timestamp"
+                }
+              }
+            },
+            {
+              "$sort": {
+                "_id.userId": 1,
+                "firstAt": 1
+              }
+            },
+            {
+              "$group": {
+                "_id": "$_id.userId",
+                "sequence": {
+                  "$push": "$_id.type"
+                }
+              }
+            },
+            {
+              "$project": {
+                "reached": {
+                  "$reduce": {
+                    "input": "$sequence",
+                    "initialValue": 0,
+                    "in": {
+                      "$cond": [
+                        {
+                          "$eq": [
+                            "$$this",
+                            {
+                              "$arrayElemAt": [
+                                [
+                                  "USER_SIGNED_UP",
+                                  "MESSAGE_SENT",
+                                  "SUBSCRIPTION_PAID"
+                                ],
+                                "$$value"
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "$add": [
+                            "$$value",
+                            1
+                          ]
+                        },
+                        "$$value"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "$group": {
+                "_id": "$reached",
+                "users": {
+                  "$sum": 1
+                }
+              }
+            }
+          ],
+          "cursor": {},
+          "allowDiskUse": true,
+          "$db": "blackbox"
+        },
+        "ok": 1.0
+      }
+    },
+    {
+      "name": "funnel, March",
+      "pipeline": [
+        {
+          "$match": {
+            "type": {
+              "$in": [
+                "USER_SIGNED_UP",
+                "MESSAGE_SENT",
+                "SUBSCRIPTION_PAID"
+              ]
+            },
+            "timestamp": {
+              "$gte": {
+                "$date": "2025-03-01T00:00:00Z"
+              },
+              "$lt": {
+                "$date": "2025-04-01T00:00:00Z"
+              }
+            }
+          }
+        },
+        {
+          "$group": {
+            "_id": {
+              "userId": "$userId",
+              "type": "$type"
+            },
+            "firstAt": {
+              "$min": "$timestamp"
+            }
+          }
+        },
+        {
+          "$sort": {
+            "_id.userId": 1,
+            "firstAt": 1
+          }
+        },
+        {
+          "$group": {
+            "_id": "$_id.userId",
+            "sequence": {
+              "$push": "$_id.type"
+            }
+          }
+        },
+        {
+          "$project": {
+            "reached": {
+              "$reduce": {
+                "input": "$sequence",
+                "initialValue": 0,
+                "in": {
+                  "$cond": [
+                    {
+                      "$eq": [
+                        "$$this",
+                        {
+                          "$arrayElemAt": [
+                            [
+                              "USER_SIGNED_UP",
+                              "MESSAGE_SENT",
+                              "SUBSCRIPTION_PAID"
+                            ],
+                            "$$value"
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "$add": [
+                        "$$value",
+                        1
+                      ]
+                    },
+                    "$$value"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        {
+          "$group": {
+            "_id": "$reached",
+            "users": {
+              "$sum": 1
+            }
+          }
+        }
+      ],
+      "plan": "COLLSCAN -> GROUP, then $sort, $group, $project, $group",
+      "totalDocsExamined": 300000,
+      "totalKeysExamined": 0,
+      "matchedDocuments": 12124,
+      "returnedDocuments": 4,
+      "explainExecutionTimeMillisMedian": 167,
+      "pipelineMillisMedian": 140,
+      "explain": {
+        "explainVersion": "2",
+        "stages": [
+          {
+            "$cursor": {
+              "queryPlanner": {
+                "namespace": "blackbox.events",
+                "parsedQuery": {
+                  "$and": [
+                    {
+                      "timestamp": {
+                        "$lt": {
+                          "$date": "2025-04-01T00:00:00Z"
+                        }
+                      }
+                    },
+                    {
+                      "timestamp": {
+                        "$gte": {
+                          "$date": "2025-03-01T00:00:00Z"
+                        }
+                      }
+                    },
+                    {
+                      "type": {
+                        "$in": [
+                          "MESSAGE_SENT",
+                          "SUBSCRIPTION_PAID",
+                          "USER_SIGNED_UP"
+                        ]
+                      }
+                    }
+                  ]
+                },
+                "indexFilterSet": false,
+                "queryHash": "371FA2D3",
+                "planCacheShapeHash": "371FA2D3",
+                "planCacheKey": "2C9CB436",
+                "optimizationTimeMillis": 0,
+                "cursorType": "regular",
+                "maxIndexedOrSolutionsReached": false,
+                "maxIndexedAndSolutionsReached": false,
+                "maxScansToExplodeReached": false,
+                "prunedSimilarIndexes": false,
+                "winningPlan": {
+                  "isCached": false,
+                  "queryPlan": {
+                    "stage": "GROUP",
+                    "planNodeId": 3,
+                    "inputStage": {
+                      "stage": "COLLSCAN",
+                      "planNodeId": 1,
+                      "filter": {
+                        "$and": [
+                          {
+                            "timestamp": {
+                              "$lt": {
+                                "$date": "2025-04-01T00:00:00Z"
+                              }
+                            }
+                          },
+                          {
+                            "timestamp": {
+                              "$gte": {
+                                "$date": "2025-03-01T00:00:00Z"
+                              }
+                            }
+                          },
+                          {
+                            "type": {
+                              "$in": [
+                                "MESSAGE_SENT",
+                                "SUBSCRIPTION_PAID",
+                                "USER_SIGNED_UP"
+                              ]
+                            }
+                          }
+                        ]
+                      },
+                      "nss": "blackbox.events",
+                      "direction": "forward"
+                    }
+                  },
+                  "slotBasedPlan": {
+                    "slots": "$$RESULT=s11 env: { s6 = InList(\"USER_SIGNED_UP\" \"MESSAGE_SENT\" \"SUBSCRIPTION_PAID\") }",
+                    "stages": "[3] project [s11 = newObj(\"_id\", s9, \"firstAt\", s10)] \n[3] project [s9 = newObj(\"userId\", s5, \"type\", s4), s10 = (s8 ?: null)] \n[3] group [s5, s4] [s8 = min(fillType(s3, 1088, Nothing))] spillSlots[s7] mergingExprs[min(fillType(s7, 1088, Nothing))] \n[1] filter {(traverseF(s3, lambda(l4.0) { ((move(l4.0) < Date(1743465600000)) ?: false) }, false) && traverseF(s3, lambda(l5.0) { ((move(l5.0) >= Date(1740787200000)) ?: false) }, false) && traverseF(s4, lambda(l6.0) { isMember(move(l6.0), s6) }, false))} \n[1] scan generic [s1 = record, s2 = recordId] [s3 = timestamp, s4 = type, s5 = userId] @\"fe5637cd-2e2f-4374-aad1-c21097fde912\" "
+                  }
+                },
+                "rejectedPlans": []
+              },
+              "executionStats": {
+                "executionSuccess": true,
+                "nReturned": 690,
+                "executionTimeMillis": 177,
+                "totalKeysExamined": 0,
+                "totalDocsExamined": 300000,
+                "executionStages": {
+                  "stage": "project",
+                  "planNodeId": 3,
+                  "nReturned": 690,
+                  "executionTimeMillisEstimate": 172,
+                  "opens": 1,
+                  "closes": 1,
+                  "saveState": 16,
+                  "restoreState": 15,
+                  "isEOF": 1,
+                  "projections": {
+                    "11": "newObj(\"_id\", s9, \"firstAt\", s10) "
+                  },
+                  "inputStage": {
+                    "stage": "project",
+                    "planNodeId": 3,
+                    "nReturned": 690,
+                    "executionTimeMillisEstimate": 172,
+                    "opens": 1,
+                    "closes": 1,
+                    "saveState": 16,
+                    "restoreState": 15,
+                    "isEOF": 1,
+                    "projections": {
+                      "9": "newObj(\"userId\", s5, \"type\", s4) ",
+                      "10": "(s8 ?: null) "
+                    },
+                    "inputStage": {
+                      "stage": "group",
+                      "planNodeId": 3,
+                      "nReturned": 690,
+                      "executionTimeMillisEstimate": 172,
+                      "opens": 1,
+                      "closes": 1,
+                      "saveState": 16,
+                      "restoreState": 15,
+                      "isEOF": 1,
+                      "groupBySlots": [
+                        5,
+                        4
+                      ],
+                      "expressions": {
+                        "8": "min(fillType(s3, 1088, Nothing)) ",
+                        "initExprs": {
+                          "8": null,
+                          "mergingExprs": {
+                            "7": "min(fillType(s7, 1088, Nothing)) "
+                          }
+                        }
+                      },
+                      "usedDisk": false,
+                      "spills": 0,
+                      "spilledBytes": 0,
+                      "spilledRecords": 0,
+                      "spilledDataStorageSize": 0,
+                      "peakTrackedMemBytes": 62790,
+                      "inputStage": {
+                        "stage": "filter",
+                        "planNodeId": 1,
+                        "nReturned": 12124,
+                        "executionTimeMillisEstimate": 172,
+                        "opens": 1,
+                        "closes": 1,
+                        "saveState": 16,
+                        "restoreState": 15,
+                        "isEOF": 1,
+                        "numTested": 300000,
+                        "filter": "(traverseF(s3, lambda(l4.0) { ((move(l4.0) < Date(1743465600000)) ?: false) }, false) && traverseF(s3, lambda(l5.0) { ((move(l5.0) >= Date(1740787200000)) ?: false) }, false) && traverseF(s4, lambda(l6.0) { isMember(move(l6.0), s6) }, false)) ",
+                        "inputStage": {
+                          "stage": "scan",
+                          "planNodeId": 1,
+                          "nReturned": 300000,
+                          "executionTimeMillisEstimate": 135,
+                          "opens": 1,
+                          "closes": 1,
+                          "saveState": 16,
+                          "restoreState": 15,
+                          "isEOF": 1,
+                          "numReads": 300000,
+                          "recordSlot": 1,
+                          "recordIdSlot": 2,
+                          "scanFieldNames": [
+                            "timestamp",
+                            "type",
+                            "userId"
+                          ],
+                          "scanFieldSlots": [
+                            3,
+                            4,
+                            5
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "nReturned": 690,
+            "executionTimeMillisEstimate": 175
+          },
+          {
+            "$sort": {
+              "sortKey": {
+                "_id.userId": 1,
+                "firstAt": 1
+              }
+            },
+            "totalDataSizeSortedBytesEstimate": 394000,
+            "usedDisk": false,
+            "spills": 0,
+            "spilledBytes": 0,
+            "spilledRecords": 0,
+            "spilledDataStorageSize": 0,
+            "nReturned": 690,
+            "executionTimeMillisEstimate": 175,
+            "peakTrackedMemBytes": 394000
+          },
+          {
+            "$group": {
+              "_id": "$_id.userId",
+              "sequence": {
+                "$push": "$_id.type"
+              },
+              "$willBeMerged": false
+            },
+            "nReturned": 431,
+            "executionTimeMillisEstimate": 175,
+            "maxAccumulatorMemoryUsageBytes": {
+              "sequence": 95188
+            },
+            "totalOutputDataSizeBytes": 142167,
+            "usedDisk": false,
+            "spills": 0,
+            "spilledDataStorageSize": 0,
+            "spilledBytes": 0,
+            "spilledRecords": 0,
+            "peakTrackedMemBytes": 102084
+          },
+          {
+            "$project": {
+              "_id": true,
+              "reached": {
+                "$reduce": {
+                  "input": "$sequence",
+                  "initialValue": {
+                    "$const": 0
+                  },
+                  "in": {
+                    "$cond": [
+                      {
+                        "$eq": [
+                          "$$this",
+                          {
+                            "$arrayElemAt": [
+                              {
+                                "$const": [
+                                  "USER_SIGNED_UP",
+                                  "MESSAGE_SENT",
+                                  "SUBSCRIPTION_PAID"
+                                ]
+                              },
+                              "$$value"
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "$add": [
+                          "$$value",
+                          {
+                            "$const": 1
+                          }
+                        ]
+                      },
+                      "$$value"
+                    ]
+                  }
+                }
+              }
+            },
+            "nReturned": 431,
+            "executionTimeMillisEstimate": 175
+          },
+          {
+            "$group": {
+              "_id": "$reached",
+              "users": {
+                "$sum": {
+                  "$const": 1
+                }
+              },
+              "$willBeMerged": false
+            },
+            "nReturned": 4,
+            "executionTimeMillisEstimate": 175,
+            "maxAccumulatorMemoryUsageBytes": {
+              "users": 896
+            },
+            "totalOutputDataSizeBytes": 948,
+            "usedDisk": false,
+            "spills": 0,
+            "spilledDataStorageSize": 0,
+            "spilledBytes": 0,
+            "spilledRecords": 0,
+            "peakTrackedMemBytes": 960
+          }
+        ],
+        "queryShapeHash": "4056ABBE88C67C3B24DDADB88680FA910A97681C60544FBE9ADB78A02F9E4681",
+        "peakTrackedMemBytes": 62790,
+        "serverInfo": {
+          "host": "King_Gomis15",
+          "port": 27017,
+          "version": "8.3.11",
+          "gitVersion": "b8b83d6e6e1aed495578ad8c6f9234ad329c9955"
+        },
+        "serverParameters": {
+          "internalQueryFacetBufferSizeBytes": 104857600,
+          "internalDocumentSourceGroupMaxMemoryBytes": 104857600,
+          "internalQueryMaxBlockingSortMemoryUsageBytes": 104857600,
+          "internalDocumentSourceSetWindowFieldsMaxMemoryBytes": 104857600,
+          "internalQueryFacetMaxOutputDocSizeBytes": 104857600,
+          "internalLookupStageIntermediateDocumentMaxSizeBytes": 104857600,
+          "internalQueryProhibitBlockingMergeOnMongoS": 0,
+          "internalQueryMaxAddToSetBytes": 104857600,
+          "internalQueryFrameworkControl": "trySbeRestricted",
+          "internalQueryPlannerIgnoreIndexWithCollationForRegex": 1
+        },
+        "command": {
+          "aggregate": "events",
+          "pipeline": [
+            {
+              "$match": {
+                "type": {
+                  "$in": [
+                    "USER_SIGNED_UP",
+                    "MESSAGE_SENT",
+                    "SUBSCRIPTION_PAID"
+                  ]
+                },
+                "timestamp": {
+                  "$gte": {
+                    "$date": "2025-03-01T00:00:00Z"
+                  },
+                  "$lt": {
+                    "$date": "2025-04-01T00:00:00Z"
+                  }
+                }
+              }
+            },
+            {
+              "$group": {
+                "_id": {
+                  "userId": "$userId",
+                  "type": "$type"
+                },
+                "firstAt": {
+                  "$min": "$timestamp"
+                }
+              }
+            },
+            {
+              "$sort": {
+                "_id.userId": 1,
+                "firstAt": 1
+              }
+            },
+            {
+              "$group": {
+                "_id": "$_id.userId",
+                "sequence": {
+                  "$push": "$_id.type"
+                }
+              }
+            },
+            {
+              "$project": {
+                "reached": {
+                  "$reduce": {
+                    "input": "$sequence",
+                    "initialValue": 0,
+                    "in": {
+                      "$cond": [
+                        {
+                          "$eq": [
+                            "$$this",
+                            {
+                              "$arrayElemAt": [
+                                [
+                                  "USER_SIGNED_UP",
+                                  "MESSAGE_SENT",
+                                  "SUBSCRIPTION_PAID"
+                                ],
+                                "$$value"
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "$add": [
+                            "$$value",
+                            1
+                          ]
+                        },
+                        "$$value"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "$group": {
+                "_id": "$reached",
+                "users": {
+                  "$sum": 1
+                }
+              }
+            }
+          ],
+          "cursor": {},
+          "allowDiskUse": true,
+          "$db": "blackbox"
+        },
+        "ok": 1.0
+      }
+    }
+  ]
+}

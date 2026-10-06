@@ -12,7 +12,7 @@ import com.pigeon.blackbox.event.EventType;
  * they can be replayed as is with explain() to measure them. Every pipeline starts with $match,
  * the only stage able to use an index.
  */
-final class AnalyticsPipelines {
+public final class AnalyticsPipelines {
 
 	/* Days are cut at midnight, Paris time, like the generated activity */
 	static final String TIME_ZONE = "Europe/Paris";
@@ -20,7 +20,7 @@ final class AnalyticsPipelines {
 	private AnalyticsPipelines() {
 	}
 
-	static List<Document> topActiveUsers(Period period, int limit) {
+	public static List<Document> topActiveUsers(Period period, int limit) {
 		Document match = new Document("type", new Document("$in", names(EventType.userInitiatedTypes())));
 		return List.of(
 				new Document("$match", withPeriod(match, period)),
@@ -42,7 +42,7 @@ final class AnalyticsPipelines {
 					.append("eventCount", 1)));
 	}
 
-	static List<Document> errorsByTypeAndDay(Period period) {
+	public static List<Document> errorsByTypeAndDay(Period period) {
 		Document day = new Document("$dateTrunc", new Document("date", "$timestamp")
 			.append("unit", "day")
 			.append("timezone", TIME_ZONE));
@@ -62,7 +62,7 @@ final class AnalyticsPipelines {
 						.append("sortBy", new Document("count", -1).append("errorType", 1))))));
 	}
 
-	static List<Document> responseTimesByEndpoint(Period period) {
+	public static List<Document> responseTimesByEndpoint(Period period) {
 		/* t-digest estimation (MongoDB 7.0+): exact enough for a P95, without sorting every value */
 		Document p95 = new Document("$percentile", new Document("input", "$payload.responseTimeMs")
 			.append("p", List.of(0.95))
@@ -89,7 +89,7 @@ final class AnalyticsPipelines {
 	 * then walks that sequence: the user moves to the next step only when the expected type comes.
 	 * Returns one document per number of steps reached: { _id: reached, users: count }.
 	 */
-	static List<Document> funnel(List<EventType> steps, Period period) {
+	public static List<Document> funnel(List<EventType> steps, Period period) {
 		List<String> stepNames = names(steps);
 		Document nextStepIfExpected = new Document("$cond", List.of(
 				new Document("$eq", List.of("$$this", new Document("$arrayElemAt", List.of(stepNames, "$$value")))),
