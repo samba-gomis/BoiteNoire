@@ -47,4 +47,47 @@ L'entonnoir sur l'année est la requête la plus coûteuse, sur les deux indicat
 
 C'est aussi l'appel par défaut de l'endpoint `/api/analytics/funnel`, sans période : celui qu'un tableau de bord lancerait le plus souvent.
 
-Les sections sur l'index et sur les mesures après index sont ajoutées dans un commit suivant, une fois l'index créé.
+## Index créé
+
+```js
+db.events.createIndex({ type: 1, timestamp: 1, userId: 1 }, { name: "type_timestamp_userId" })
+```
+
+L'index est créé par [EventIndexes.java](../../src/main/java/com/pigeon/blackbox/event/EventIndexes.java) au démarrage de l'application. Le générateur, qui vide la collection, le recrée **après** avoir inséré les données : construire l'index une seule fois sur 300 000 événements prend environ une seconde, ce qui est plus rapide que de le mettre à jour à chacune des 300 000 insertions.
+
+### Pourquoi ces champs, dans cet ordre
+
+Le pipeline de l'entonnoir commence par un `$match` sur `type` (un `$in` sur 3 types) et sur `timestamp` (la période), puis regroupe par `userId` et par `type` en gardant le premier `timestamp`. Il ne lit donc que trois champs : `type`, `timestamp` et `userId`. L'ordre suit la règle **ESR** : l'Égalité, puis le tri (Sort), puis l'intervalle (Range).
+
+1. **`type` en premier, pour l'égalité.** Avec le `$in`, MongoDB parcourt un intervalle de l'index par type demandé et écarte d'emblée les autres types : 157 295 événements sur 300 000 sur l'année.
+2. **`timestamp` ensuite, pour l'intervalle.** Dans chaque type, les clés sont rangées par date : l'index saute directement au début de la période et s'arrête à sa fin. Aucun tri n'est à servir par l'index, car le `$sort` du pipeline porte sur les résultats du `$group`.
+3. **`userId` en dernier, seulement pour être lu.** Il n'est ni filtré ni trié, mais c'est le dernier champ dont le `$group` a besoin. Avec lui, l'index contient tout ce que la requête lit : MongoDB calcule le résultat **sans ouvrir un seul document**. C'est une requête **couverte** (`PROJECTION_COVERED`, `totalDocsExamined: 0`).
+
+### Les variantes écartées, mesurées
+
+Pour vérifier cet ordre, les quatre variantes ont été créées sur une copie identique des données (même graine), puis l'entonnoir a été mesuré sur chacune, en forçant l'index avec `hint` (médiane de 5 mesures, temps côté serveur) :
+
+```js
+db.events.explain("executionStats").aggregate(pipeline, { hint: "timestamp_type_userId" })
+```
+
+| Index | Année : clés / documents examinés | Année (ms) | Mars : clés / documents examinés | Mars (ms) |
+|---|---:|---:|---:|---:|
+| **`{ type, timestamp, userId }`** (retenu) | **157 295 / 0** | **165** | **12 124 / 0** | **16** |
+| `{ timestamp, type, userId }` | 300 000 / 0 | 487 | 23 622 / 0 | 42 |
+| `{ type, userId, timestamp }` | 157 297 / 0 | 157 | 17 896 / 0 | 25 |
+| `{ type, timestamp }` | 157 295 / 157 295 | 301 | 12 124 / 12 124 | 24 |
+| Aucun index (rappel) | 0 / 300 000 | 359 | 0 / 300 000 | 167 |
+
+- **`{ timestamp, type, userId }`** met l'intervalle avant l'égalité. L'index lit alors les clés de **tous** les types de la période, puis écarte les mauvais types un par un. Sur l'année, il lit 300 000 clés et devient **plus lent qu'un parcours complet de la collection** (487 ms contre 359 ms).
+- **`{ type, userId, timestamp }`** place `userId` entre l'égalité et l'intervalle. La période ne borne plus un intervalle continu : MongoDB doit sauter d'utilisateur en utilisateur. C'est équivalent sur l'année, mais plus coûteux dès que la période se réduit (17 896 clés contre 12 124 sur mars).
+- **`{ type, timestamp }`** sert bien le `$match`, mais MongoDB doit ouvrir chaque document retenu pour y lire `userId` (`FETCH`) : 157 295 documents lus sur l'année, et un temps presque doublé.
+
+### Un index qui sert les quatre analyses
+
+- **Le top des utilisateurs** lit les mêmes trois champs : il est couvert lui aussi.
+- **Les erreurs et les temps de réponse** filtrent sur `type` et `timestamp`, le début de l'index. Ils l'utilisent pour ne lire que les documents retenus, puis ouvrent ces seuls documents pour y lire le `payload`.
+
+Les tests [IndexCoverageTests.java](../../src/test/java/com/pigeon/blackbox/performance/IndexCoverageTests.java) vérifient l'ordre des champs, et que l'entonnoir et le top des utilisateurs restent couverts : aucun `COLLSCAN`, aucun `FETCH`, 0 document examiné.
+
+La mesure complète après index, sur les huit cas, est ajoutée dans un commit suivant.

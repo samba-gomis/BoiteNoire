@@ -15,6 +15,7 @@ import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.stereotype.Component;
 
 import com.pigeon.blackbox.event.Event;
+import com.pigeon.blackbox.event.EventIndexes;
 import com.pigeon.blackbox.event.EventType;
 import com.pigeon.blackbox.user.User;
 
@@ -27,10 +28,12 @@ class DataGenerator implements CommandLineRunner {
 	private static final Logger log = LoggerFactory.getLogger(DataGenerator.class);
 
 	private final MongoTemplate mongoTemplate;
+	private final EventIndexes eventIndexes;
 	private final GeneratorProperties properties;
 
-	DataGenerator(MongoTemplate mongoTemplate, GeneratorProperties properties) {
+	DataGenerator(MongoTemplate mongoTemplate, EventIndexes eventIndexes, GeneratorProperties properties) {
 		this.mongoTemplate = mongoTemplate;
+		this.eventIndexes = eventIndexes;
 		this.properties = properties;
 	}
 
@@ -56,6 +59,9 @@ class DataGenerator implements CommandLineRunner {
 		});
 		insert(batch);
 		mongoTemplate.insert(result.users().stream().map(user -> user.toUser()).toList(), User.class);
+
+		/* Dropping the collection dropped its indexes; building them once, after the bulk insert, is faster */
+		eventIndexes.ensureIndexes();
 
 		long payingUsers = result.users().stream().filter(user -> user.subscription() != null).count();
 		log.info("Inserted {} users, {} of them paying", result.users().size(), payingUsers);

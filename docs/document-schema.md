@@ -288,4 +288,6 @@ MongoDB n'impose pas de schéma. Les règles suivantes sont donc garanties par l
 
 Spring Data ajoute un champ technique **`_class`** à la racine de chaque événement et dans son `payload`. Il contient le nom complet de la classe Java (par exemple `com.pigeon.blackbox.event.payload.SubscriptionPaidPayload`) et sert uniquement à reconstruire le bon objet à la relecture. Les analyses ne s'en servent pas : elles s'appuient sur `type`.
 
-À ce stade, aucun index n'est créé en dehors de `_id`. Les index seront choisis après la mesure des requêtes, et justifiés dans le dossier de mesure.
+## Index
+
+En plus de `_id`, la collection `events` porte un index composé `{ type: 1, timestamp: 1, userId: 1 }`, créé au démarrage de l'application et après chaque génération de données. Il n'a été choisi qu'après avoir mesuré les quatre analyses sans index. Son choix, l'ordre de ses champs et les mesures avant et après sont détaillés dans le [dossier de mesure](performance/README.md).
